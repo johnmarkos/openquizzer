@@ -1,0 +1,98 @@
+{
+  "chapterTitle": "Sample Chapter",
+  "chapterDescription": "Demonstrates all 5 question types",
+  "problems": [
+    {
+      "id": "mc-001",
+      "type": "multiple-choice",
+      "question": "What is the capital of France?",
+      "options": ["London", "Paris", "Berlin", "Madrid"],
+      "correct": 1,
+      "explanation": "Paris has been the capital of France since the 10th century."
+    },
+    {
+      "id": "mc-002",
+      "type": "multiple-choice",
+      "question": "Which planet is closest to the Sun?",
+      "options": ["Venus", "Earth", "Mercury", "Mars"],
+      "correct": 2,
+      "explanation": "Mercury orbits at an average distance of about 58 million km from the Sun."
+    },
+    {
+      "id": "mc-003",
+      "type": "multiple-choice",
+      "question": "What is the chemical symbol for gold?",
+      "options": ["Go", "Gd", "Au", "Ag"],
+      "correct": 2,
+      "explanation": "Au comes from the Latin word 'aurum' meaning gold."
+    },
+    {
+      "id": "num-001",
+      "type": "numeric-input",
+      "question": "How many days are in a non-leap year?",
+      "answer": 365,
+      "unit": "days",
+      "tolerance": "exact",
+      "explanation": "A non-leap year has exactly 365 days. Leap years have 366."
+    },
+    {
+      "id": "num-002",
+      "type": "numeric-input",
+      "question": "Roughly how many kilometers is a marathon?",
+      "answer": 42,
+      "unit": "km",
+      "tolerance": 0.1,
+      "explanation": "A marathon is 42.195 km (26.2 miles)."
+    },
+    {
+      "id": "ord-001",
+      "type": "ordering",
+      "question": "Order these planets from closest to farthest from the Sun:",
+      "items": ["Earth", "Mars", "Mercury", "Venus"],
+      "correctOrder": [2, 3, 0, 1],
+      "explanation": "The order is: Mercury (58M km), Venus (108M km), Earth (150M km), Mars (228M km)."
+    },
+    {
+      "id": "ord-002",
+      "type": "ordering",
+      "question": "Order these oceans from smallest to largest by area:",
+      "items": ["Atlantic", "Arctic", "Indian", "Pacific"],
+      "correctOrder": [1, 2, 0, 3],
+      "explanation": "Arctic (14M km²), Indian (70M km²), Atlantic (85M km²), Pacific (165M km²)."
+    },
+    {
+      "id": "ms-001",
+      "type": "multi-select",
+      "question": "Which of the following are primary colors of light?",
+      "options": ["Red", "Yellow", "Green", "Blue"],
+      "correctIndices": [0, 2, 3],
+      "explanation": "The primary colors of light (additive) are red, green, and blue (RGB)."
+    },
+    {
+      "id": "ms-002",
+      "type": "multi-select",
+      "question": "Which of these are noble gases?",
+      "options": ["Helium", "Nitrogen", "Neon", "Oxygen"],
+      "correctIndices": [0, 2],
+      "explanation": "Helium and Neon are noble gases (Group 18). Nitrogen and Oxygen are not."
+    },
+    {
+      "id": "ts-001",
+      "type": "two-stage",
+      "stages": [
+        {
+          "question": "Water boils at 100 degrees in which temperature scale?",
+          "options": ["Fahrenheit", "Celsius", "Kelvin"],
+          "correct": 1,
+          "explanation": "Water boils at 100°C at standard atmospheric pressure."
+        },
+        {
+          "question": "What is this same temperature in Kelvin?",
+          "options": ["273", "373", "473"],
+          "correct": 1,
+          "explanation": "To convert Celsius to Kelvin, add 273.15. So 100°C = 373.15K."
+        }
+      ]
+    }
+  ]
+}
