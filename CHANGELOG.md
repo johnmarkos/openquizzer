@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.1: Configurable problem ID display
+
+- New `CONFIG.showProblemId` option shows problem ID above each question (off by default)
+- Useful for instances where users need to reference specific problems for issue reporting
+
 ## v2: config.js separation
 
 - Extracted all instance-specific content (title, description, units, back-link) into `config.js`
