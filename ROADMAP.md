@@ -2,61 +2,45 @@
 
 Future features and improvements for OpenQuizzer.
 
-## New Question Types
+## Now (Next Release)
 
-**Fill-in-the-blank**
-- Show a sentence with a blank, user types the missing word/phrase
-- Exact match or accept multiple valid answers
-- Good for vocabulary, terminology, definitions
-- Priority: High (most-requested type for educational content)
+- [ ] **Weighting system** — Configure probability weights per question type so minority types appear with reasonable frequency despite smaller counts
+- [ ] **Session length cap** — Optional `maxProblems` config to limit "Practice All" sessions (default: unlimited)
+- [ ] **Keyboard accessibility for ordering** — Arrow keys to reorder, Enter to confirm
 
-**Matching / Connect pairs**
-- Two columns, user draws connections between items
-- Mobile UX: tap one from each column to pair them
-- Grading: all-or-nothing vs. partial credit per pair
-- Priority: Medium
+## Next (v1.1)
 
-**Image-based questions**
-- Display an image as part of the question (diagrams, charts, maps)
-- Answer types: MC, numeric, or hotspot (tap a region)
-- Requires: image path field in problem JSON, responsive display
-- Priority: Medium (depends on content needs)
+- [ ] **localStorage progress tracking** — Remember which problems user has seen, when, and score
+- [ ] **Basic spaced repetition** — Surface problems user got wrong more frequently
+- [ ] **Statistics view** — Show accuracy by chapter, question type, time period
+- [ ] **Skip button** — Let users skip a problem without penalty (tracked separately)
 
-**Timed questions**
-- Optional countdown timer per question
-- Configurable per-problem or per-chapter
-- Show time taken in results summary
-- Priority: Low (nice-to-have for exam prep)
+## Later (v2+)
 
-## Engine Improvements
+- [ ] **Partial credit scoring** — Ordering: credit for items in correct relative position. Multi-select: credit for each correct toggle minus incorrect
+- [ ] **Review mode** — Review missed questions at end of session. Bookmark problems for later review
+- [ ] **Fill-in-the-blank** — Show a sentence with a blank, user types the missing word/phrase. Exact match or accept multiple valid answers
+- [ ] **Matching / Connect pairs** — Two columns, user draws connections between items. Mobile UX: tap one from each column to pair them
+- [ ] **Adaptive difficulty** — Elo-style scoring per skill dimension, serve problems targeting weak areas
+- [ ] **Offline support** — Service worker for full offline functionality
+- [ ] **Import/export progress** — JSON export of user data for backup or device transfer
+- [ ] **Timed mode** — Optional countdown per problem for interview pressure simulation
+- [ ] **Streak tracking** — Daily practice streaks with visual indicator
 
-**Partial credit scoring**
-- Ordering: credit for items in correct relative position
-- Multi-select: credit for each correct toggle minus incorrect
-- Current: all-or-nothing for ordering and multi-select
-- Priority: Medium
+## Maybe (Exploring)
 
-**Question history / skip**
-- Allow users to skip a question and return to it
-- Track skipped vs. answered in results
-- Priority: Low
+- [ ] **Image-based questions** — Display an image as part of the question (diagrams, charts, maps). Answer types: MC, numeric, or hotspot
+- [ ] **Visual element picker** — Click regions on an image (e.g., "identify the load balancer")
+- [ ] **Trade-off sliders** — Multi-axis input for balancing constraints
+- [ ] **Sequence/path builder** — Non-linear ordering for flow diagrams
+- [ ] **LLM grading mode** — Optional API integration for free-text answers
+- [ ] **Multiplayer** — Real-time head-to-head quizzing
 
-## Template / UX Improvements
+## Won't Do (Out of Scope)
 
-**Progress persistence**
-- Resume interrupted sessions via localStorage
-- Track completion per chapter
-- Priority: Medium
-
-**Review mode**
-- Review missed questions at end of session
-- Bookmark problems for later review
-- Priority: Medium
-
-**Keyboard accessibility for ordering questions**
-- Current: tap-to-order only (touch/mouse)
-- Needed: arrow keys to select, Enter to place, Escape to deselect
-- Priority: Medium (accessibility compliance)
+- Build systems or transpilation — stays zero-dependency
+- User accounts or server-side storage — stays static
+- Mobile apps — PWA is sufficient
 
 ---
 
