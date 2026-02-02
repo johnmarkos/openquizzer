@@ -7,7 +7,7 @@ Supports 5 question types: multiple choice, numeric input, ordering, multi-selec
 ## Quick Start
 
 1. Click **"Use this template"** on GitHub to create your own repo
-2. Edit the `UNITS` array in `index.html` with your topics and chapters
+2. Edit `config.js` with your title, description, and topic structure
 3. Add content JSON files to `content/` (see format below)
 4. Enable GitHub Pages (Settings > Pages > Source: main branch) to deploy
 
@@ -129,32 +129,36 @@ Tolerance options:
 
 ## Configuring Your Quiz
 
-Edit the `UNITS` array in `index.html`:
+Edit `config.js`:
 
 ```js
-const UNITS = [
-  {
-    id: 1,
-    title: 'Geography',
-    chapters: [
-      { num: 1, title: 'Capitals', ready: true },
-      { num: 2, title: 'Rivers', ready: true },
-      { num: 3, title: 'Mountains', ready: false }  // not yet created
-    ]
-  },
-  {
-    id: 2,
-    title: 'History',
-    chapters: [
-      { num: 1, title: 'Ancient World', ready: true }
-    ]
-  }
-];
+export const CONFIG = {
+  title: 'My Quiz',
+  description: 'A short description shown on the landing page.',
+  // Optional: renders a navigation link above the landing page
+  // backLink: { href: '../', text: '\u2190 Back' },
+  units: [
+    {
+      id: 1,
+      title: 'Geography',
+      chapters: [
+        { num: 1, title: 'Capitals', ready: true },
+        { num: 2, title: 'Rivers', ready: true },
+        { num: 3, title: 'Mountains', ready: false }  // not yet created
+      ]
+    },
+    {
+      id: 2,
+      title: 'History',
+      chapters: [
+        { num: 1, title: 'Ancient World', ready: true }
+      ]
+    }
+  ]
+};
 ```
 
 Each chapter with `ready: true` needs a corresponding JSON file in `content/`. Chapters with `ready: false` appear grayed out. A "Practice All" button appears automatically when a unit has 2+ ready chapters.
-
-To change the title and description on the landing page, edit the `<h2>` and `<p>` tags inside the `#landing` div.
 
 ## Customizing the Look
 

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenQuizzer</title>
-  <meta name="description" content="A fast, mobile-friendly quiz app. No build step, no dependencies.">
+  <title>Quiz</title>
+  <meta name="description" content="Quiz app">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -388,6 +388,24 @@
       outline-offset: 2px;
     }
 
+    /* Back link */
+    .back-link {
+      display: inline-block;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .back-link:hover {
+      color: var(--accent);
+    }
+
+    .back-link:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
     /* Hidden utility class */
     .hidden-container {
       display: none !important;
@@ -663,11 +681,12 @@
 </head>
 <body>
   <div class="container">
+    <div id="back-link-container"></div>
 
     <!-- Landing View -->
     <div id="landing" class="landing">
-      <h2>OpenQuizzer</h2>
-      <p>A fast, mobile-friendly quiz app. Edit the UNITS array and add content JSON files to make it yours.</p>
+      <h2 id="landing-title"></h2>
+      <p id="landing-description"></p>
 
       <div id="error-msg" class="error-msg"></div>
 
@@ -748,26 +767,11 @@
 
   <script type="module">
     import { OpenQuizzer } from './openquizzer.js';
+    import { CONFIG } from './config.js';
 
     const quiz = new OpenQuizzer();
 
-    // =============================================
-    // Content catalog — EDIT THIS for your quiz
-    // =============================================
-    //
-    // Each unit has chapters. Each chapter points to a JSON file
-    // in the content/ directory. Set ready: true when the content
-    // file exists and is ready to use.
-
-    const UNITS = [
-      {
-        id: 1,
-        title: 'Sample Unit',
-        chapters: [
-          { num: 1, title: 'Sample Chapter', ready: true }
-        ]
-      }
-    ];
+    const UNITS = CONFIG.units;
 
     // =============================================
     // Constants & DOM element references
@@ -1204,6 +1208,7 @@
     });
 
     quiz.on('twoStageAdvance', ({ stageResult, nextStage }) => {
+      // Show result on current stage buttons
       const buttons = optionsEl.querySelectorAll('.option-btn');
       buttons.forEach((btn, i) => {
         btn.disabled = true;
@@ -1214,6 +1219,7 @@
         }
       });
 
+      // Transition to next stage after delay
       setTimeout(() => {
         const problem = quiz.problem;
         hideAllQuestionTypes();
@@ -1360,6 +1366,18 @@
     // =============================================
     // Initialize
     // =============================================
+
+    document.title = CONFIG.title;
+    document.querySelector('meta[name="description"]').setAttribute('content', CONFIG.description);
+    document.getElementById('landing-title').textContent = CONFIG.title;
+    document.getElementById('landing-description').textContent = CONFIG.description;
+    if (CONFIG.backLink) {
+      const link = document.createElement('a');
+      link.href = CONFIG.backLink.href;
+      link.className = 'back-link';
+      link.textContent = CONFIG.backLink.text;
+      document.getElementById('back-link-container').appendChild(link);
+    }
 
     renderUnitList();
   </script>

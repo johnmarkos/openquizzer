@@ -4,7 +4,7 @@ Guidance for Claude Code working on this repository.
 
 ## Project Overview
 
-**OpenQuizzer** is a zero-dependency, mobile-friendly quiz engine and template repo. Anyone can create a quiz site by clicking "Use this template" on GitHub, adding content JSON files, and deploying to GitHub Pages. No build step, no npm, no framework.
+**OpenQuizzer** is a zero-dependency, mobile-friendly quiz engine and template repo. Anyone can create a quiz site by clicking "Use this template" on GitHub, editing `config.js`, adding content JSON files, and deploying to GitHub Pages. No build step, no npm, no framework.
 
 Supports 5 question types: multiple choice, numeric input, ordering, multi-select, and two-stage. Automatic light/dark mode.
 
@@ -20,12 +20,13 @@ No build system. Edit files directly and push to `main` for deployment.
 
 ## Architecture
 
-Two files, no frameworks:
+Three files, no frameworks:
 
 - **`openquizzer.js`** — Quiz engine ES module. Manages state machine (`idle → practicing → answered → complete`), grading, scoring, and shuffle logic. Emits events, never touches the DOM. Tested independently.
-- **`index.html`** — All HTML, CSS, and UI logic. Imports the engine, renders questions based on engine events, delegates user actions to engine methods.
+- **`index.html`** — All HTML, CSS, and UI logic. Imports the engine and config, renders questions based on engine events, delegates user actions to engine methods. Generic across all instances — never contains instance-specific content.
+- **`config.js`** — Instance-specific configuration: title, description, optional back-link, and the units/chapters catalog. This is the only file that differs between instances.
 
-Content lives in `content/` as JSON files. The `UNITS` array in `index.html` defines the topic structure.
+Content lives in `content/` as JSON files. The `units` array in `config.js` defines the topic structure.
 
 **Engine/UI boundary:** The engine emits events with all data the UI needs to render. The UI should never need to reach back into the engine for display info. This is the core design constraint.
 
@@ -33,7 +34,7 @@ Content lives in `content/` as JSON files. The `UNITS` array in `index.html` def
 
 ## Canonical Source
 
-**System Design Practice** (`nhoj.com/ai-code/system-design-practice/`) is the canonical source for the engine. When `openquizzer.js` or `openquizzer.test.js` change there, those changes must be copied here. This repo should always have the latest engine.
+**This repo is canonical** for the engine (`openquizzer.js`, `openquizzer.test.js`) and generic UI (`index.html`). Instances (like System Design Practice) upgrade by copying these three files — `config.js` and `content/` are untouched.
 
 Instances created from this template are independent — they don't auto-update. This is acceptable for a single-file engine.
 
