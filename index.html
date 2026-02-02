@@ -769,47 +769,62 @@
       }
     ];
 
-    const TWO_STAGE_TRANSITION_DELAY = 800;
-
     // =============================================
-    // DOM element references
+    // Constants & DOM element references
     // =============================================
 
+    const TWO_STAGE_TRANSITION_DELAY = 800; // ms pause between two-stage parts
+
+    // Top-level views
     const landing = document.getElementById('landing');
     const practice = document.getElementById('practice');
     const results = document.getElementById('results');
+    const errorMsg = document.getElementById('error-msg');
+
+    // Practice view — header & progress
     const practiceTitle = document.getElementById('practice-title');
     const chapterDesc = document.getElementById('chapter-desc');
     const currentEl = document.getElementById('current');
     const totalEl = document.getElementById('total');
+    const progressEl = document.getElementById('progress');
+    const quitBtn = document.getElementById('quit-btn');
+
+    // Practice view — question area
     const questionText = document.getElementById('question-text');
     const optionsEl = document.getElementById('options');
     const feedback = document.getElementById('feedback');
     const feedbackTitle = document.getElementById('feedback-title');
     const feedbackExplanation = document.getElementById('feedback-explanation');
     const nextBtn = document.getElementById('next-btn');
-    const scoreEl = document.getElementById('score');
-    const correctCountEl = document.getElementById('correct-count');
-    const totalCountEl = document.getElementById('total-count');
-    const retryBtn = document.getElementById('retry-btn');
-    const backBtn = document.getElementById('back-btn');
-    const quitBtn = document.getElementById('quit-btn');
-    const errorMsg = document.getElementById('error-msg');
-    const progressEl = document.getElementById('progress');
+
+    // Numeric input elements
     const numericContainer = document.getElementById('numeric-container');
     const numericInput = document.getElementById('numeric-input');
     const numericUnit = document.getElementById('numeric-unit');
     const numericSubmit = document.getElementById('numeric-submit');
     const correctAnswerDisplay = document.getElementById('correct-answer-display');
     const correctAnswerValue = document.getElementById('correct-answer-value');
+
+    // Ordering elements
     const orderingContainer = document.getElementById('ordering-container');
     const orderingItems = document.getElementById('ordering-items');
     const orderingReset = document.getElementById('ordering-reset');
+
+    // Multi-select elements
     const multiSubmitContainer = document.getElementById('multi-submit-container');
     const multiSubmit = document.getElementById('multi-submit');
+
+    // Two-stage elements
     const stageIndicator = document.getElementById('stage-indicator');
     const stageContext = document.getElementById('stage-context');
     const stageContextText = document.getElementById('stage-context-text');
+
+    // Results view
+    const scoreEl = document.getElementById('score');
+    const correctCountEl = document.getElementById('correct-count');
+    const totalCountEl = document.getElementById('total-count');
+    const retryBtn = document.getElementById('retry-btn');
+    const backBtn = document.getElementById('back-btn');
 
     // =============================================
     // UI helpers

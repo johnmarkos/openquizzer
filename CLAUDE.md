@@ -29,6 +29,8 @@ Content lives in `content/` as JSON files. The `UNITS` array in `index.html` def
 
 **Engine/UI boundary:** The engine emits events with all data the UI needs to render. The UI should never need to reach back into the engine for display info. This is the core design constraint.
 
+**Readability is a nonfunctional requirement.** Code should be legible to humans, weaker models, and future maintainers without needing the full project context. Concretely: use section headers to group related code, add doc comments on non-obvious algorithms, choose method names that describe what the code does (not what the caller uses it for), label conditional branches, and avoid single-letter variable names outside tight loops. When in doubt, a short comment is better than making the reader trace through code to understand intent.
+
 ## Canonical Source
 
 **System Design Practice** (`nhoj.com/ai-code/system-design-practice/`) is the canonical source for the engine. When `openquizzer.js` or `openquizzer.test.js` change there, those changes must be copied here. This repo should always have the latest engine.
@@ -83,6 +85,13 @@ Insights captured from development:
 - Test fixtures as factory functions (`mcProblem('id', correct)`) keep tests concise
 - The `collectEvents` pattern (register listener, return array, assert after actions) works well for event-driven APIs
 - Test through shuffling by reading `quiz.problem` to get the current problem — don't assume problem order
+
+**Readability review:**
+- Rename methods to match what they actually do, not what the caller conceptually wants — `#showCurrentQuestion` became `#emitCurrentQuestion` because the engine doesn't show anything
+- Group DOM element references by view/section with mini-comments — a wall of 35 `getElementById` calls is hard to navigate
+- Label default/fallback branches in conditional chains — the "else" at the end of a tolerance check isn't obviously "default 50%"
+- Single-letter variables (`s`, `p`) are fine in lambdas but not in named methods — use descriptive names (`finalScore`)
+- Inline comments on non-obvious string operations prevent readers from having to mentally execute the code
 
 **Dead code removal:**
 - When features evolve, old code paths become orphaned — search for unused functions/elements during code review

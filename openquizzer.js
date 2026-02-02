@@ -1,6 +1,10 @@
 // OpenQuizzer — zero-dependency quiz engine ES module
 // Manages quiz state and emits events without touching the DOM.
 
+// =============================================
+// Module-private utilities (not exported)
+// =============================================
+
 const DEFAULT_TYPE_WEIGHTS = {
   'multiple-choice': 1,
   'numeric-input': 1.5,
@@ -17,6 +21,11 @@ function shuffleArray(array) {
   return array;
 }
 
+/**
+ * Shuffle problems so question types are evenly distributed rather than
+ * clustered together. Higher-weight types get picked more often from
+ * their pool, producing a balanced mix across the session.
+ */
 function weightedShuffle(problems, typeWeights) {
   const byType = {};
   problems.forEach(p => {
@@ -82,6 +91,7 @@ function checkNumericAnswer(userValue, correctValue, tolerance) {
     const diff = Math.abs(userValue - correctValue) / correctValue;
     return diff <= tolerance;
   } else {
+    // Default: 50% tolerance when no tolerance is specified
     const diff = Math.abs(userValue - correctValue) / correctValue;
     return diff <= 0.5;
   }
@@ -92,7 +102,8 @@ function formatNumber(num) {
 
   const format = (val, suffix) => {
     const fixed = (val).toFixed(1);
-    return (fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed) + suffix;
+    const trimmed = fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed; // 5.0 → "5", 5.3 → "5.3"
+    return trimmed + suffix;
   };
 
   if (num >= 1e12) return format(num / 1e12, 'T');
@@ -189,7 +200,7 @@ export class OpenQuizzer {
     this.#currentIndex = 0;
     this.#answers = [];
     this.#setState('practicing');
-    this.#showCurrentQuestion();
+    this.#emitCurrentQuestion();
   }
 
   next() {
@@ -197,7 +208,7 @@ export class OpenQuizzer {
     if (this.#currentIndex < this.#problems.length - 1) {
       this.#currentIndex++;
       this.#setState('practicing');
-      this.#showCurrentQuestion();
+      this.#emitCurrentQuestion();
     } else {
       this.#complete();
     }
@@ -209,7 +220,7 @@ export class OpenQuizzer {
     this.#answers = [];
     this.#resetQuestionState();
     this.#setState('practicing');
-    this.#showCurrentQuestion();
+    this.#emitCurrentQuestion();
   }
 
   reset() {
@@ -361,12 +372,12 @@ export class OpenQuizzer {
     this.#twoStageAnswers = [];
   }
 
-  #showCurrentQuestion() {
+  #emitCurrentQuestion() {
     this.#resetQuestionState();
     const problem = this.#problems[this.#currentIndex];
     const type = problem.type || 'multiple-choice';
 
-    let shuffledItems = undefined;
+    let shuffledItems;
     if (type === 'ordering') {
       const shuffledIndices = [...Array(problem.items.length).keys()];
       shuffleArray(shuffledIndices);
@@ -412,7 +423,7 @@ export class OpenQuizzer {
     this.#twoStageAnswers.push({ selected: index, correct: isCorrect });
 
     if (stageIndex < problem.stages.length - 1) {
-      // More stages to go
+      // Advance to next stage — emit result for this stage but stay in 'practicing'
       this.#twoStageIndex = stageIndex + 1;
       const nextStage = problem.stages[stageIndex + 1];
 
@@ -432,7 +443,7 @@ export class OpenQuizzer {
         }
       });
     } else {
-      // All stages complete
+      // Final stage — grade the overall problem (correct only if ALL stages correct)
       this.#answered = true;
       const allCorrect = this.#twoStageAnswers.every(a => a.correct);
 
@@ -478,12 +489,12 @@ export class OpenQuizzer {
   }
 
   #complete() {
-    const s = this.score;
+    const finalScore = this.score;
     this.#setState('complete');
     this.#emit('complete', {
-      correct: s.correct,
-      total: s.total,
-      percentage: s.percentage,
+      correct: finalScore.correct,
+      total: finalScore.total,
+      percentage: finalScore.percentage,
       answers: this.answers
     });
   }
