@@ -186,6 +186,14 @@
       margin-bottom: 1.5rem;
     }
 
+    .problem-id {
+      display: none;
+      font-size: 0.7rem;
+      opacity: 0.35;
+      margin-bottom: 0.25rem;
+      user-select: all;
+    }
+
     .question {
       font-size: 1rem;
       margin-bottom: 1.5rem;
@@ -711,6 +719,7 @@
           <div class="stage-context-label">Your previous answer:</div>
           <div id="stage-context-text"></div>
         </div>
+        <span class="problem-id" id="problem-id"></span>
         <p class="question" id="question-text"></p>
 
         <!-- Multiple choice options -->
@@ -794,6 +803,7 @@
     const quitBtn = document.getElementById('quit-btn');
 
     // Practice view — question area
+    const problemIdEl = document.getElementById('problem-id');
     const questionText = document.getElementById('question-text');
     const optionsEl = document.getElementById('options');
     const feedback = document.getElementById('feedback');
@@ -1173,6 +1183,14 @@
       currentEl.textContent = index + 1;
       totalEl.textContent = total;
       progressEl.setAttribute('aria-label', `Question ${index + 1} of ${total}`);
+
+      // Show problem ID if enabled via config (for issue reporting)
+      if (CONFIG.showProblemId && problem.id) {
+        problemIdEl.textContent = problem.id;
+        problemIdEl.style.display = 'block';
+      } else {
+        problemIdEl.style.display = 'none';
+      }
 
       if (type === 'two-stage') {
         renderTwoStageQuestion(problem, 0, null);
