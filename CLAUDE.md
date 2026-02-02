@@ -55,9 +55,9 @@ Fix issues. Review again. **Iterate until the reviewer finds nothing significant
 
 **Escape hatch:** If the same issue recurs or you're uncertain, flag it for human review and move on.
 
-## Roadmap
+## Roadmap & Changelog
 
-Future features are tracked in `ROADMAP.md`. When flagging something for later, add it there.
+Future features are tracked in `ROADMAP.md`. Completed work is recorded in `CHANGELOG.md`.
 
 ## Maintaining This File
 
