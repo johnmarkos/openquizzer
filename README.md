@@ -258,6 +258,8 @@ node --test openquizzer.test.js
 
 No test dependencies needed. Requires Node 20+.
 
-## License
-
 MIT
+
+## Contributing
+
+See [AGENTS.md](AGENTS.md) for coding standards, architecture details, and verification guidelines.
