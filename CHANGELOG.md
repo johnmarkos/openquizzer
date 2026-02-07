@@ -1,5 +1,12 @@
 # Changelog
 
+## Agent instruction migration (2026-02-07)
+
+- Added `AGENTS.md` as the canonical instruction file by porting existing `CLAUDE.md` guidance.
+- Generalized Claude-specific wording to agent-neutral language.
+- Added `Commit Attribution` guidance for agent-generated commits.
+- Replaced `CLAUDE.md` contents with a compatibility pointer to `AGENTS.md`.
+
 ## v2.1: Configurable problem ID display
 
 - New `CONFIG.showProblemId` option shows problem ID above each question (off by default)
