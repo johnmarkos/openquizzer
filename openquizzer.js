@@ -201,10 +201,7 @@ export class OpenQuizzer {
     this.#allProblems = [...problems];
     this.#maxProblems = maxProblems;
     this.#problems = weightedShuffle([...problems], this.#typeWeights);
-
-    if (this.#maxProblems > 0 && this.#problems.length > this.#maxProblems) {
-      this.#problems = this.#problems.slice(0, this.#maxProblems);
-    }
+    this.#applyMaxProblems();
 
     this.#currentIndex = 0;
     this.#answers = [];
@@ -233,10 +230,7 @@ export class OpenQuizzer {
 
   retry() {
     this.#problems = weightedShuffle([...this.#allProblems], this.#typeWeights);
-
-    if (this.#maxProblems > 0 && this.#problems.length > this.#maxProblems) {
-      this.#problems = this.#problems.slice(0, this.#maxProblems);
-    }
+    this.#applyMaxProblems();
 
     this.#currentIndex = 0;
     this.#answers = [];
@@ -391,6 +385,12 @@ export class OpenQuizzer {
   }
 
   // --- Private helpers ---
+
+  #applyMaxProblems() {
+    if (this.#maxProblems > 0 && this.#problems.length > this.#maxProblems) {
+      this.#problems = this.#problems.slice(0, this.#maxProblems);
+    }
+  }
 
   #resetQuestionState() {
     this.#answered = false;
