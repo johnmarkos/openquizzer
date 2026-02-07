@@ -159,6 +159,20 @@ export const CONFIG = {
 
 Each chapter with `ready: true` needs a corresponding JSON file in `content/`. Chapters with `ready: false` appear grayed out. A "Practice All" button appears automatically when a unit has 2+ ready chapters.
 
+### Customizing Weights
+
+You can optionally control the probability of each question type appearing in a session. Add `typeWeights` to `CONFIG`:
+
+```js
+  typeWeights: {
+    "multiple-choice": 1,
+    "numeric-input": 5, // Appear 5x more often
+    "ordering": 0,      // Never appear
+  },
+```
+
+Default weight is `1` for any type not listed. Setting a weight to `0` removes that type from the session entirely.
+
 ## Customizing the Look
 
 All styling is in the `<style>` block of `index.html`. The design uses CSS custom properties for theming:

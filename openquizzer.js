@@ -42,7 +42,7 @@ function weightedShuffle(problems, typeWeights) {
   const typeQueues = Object.entries(byType).map(([type, items]) => ({
     type,
     items: [...items],
-    weight: typeWeights[type] || 1,
+    weight: typeWeights[type] !== undefined ? typeWeights[type] : 1,
   }));
 
   while (typeQueues.some((q) => q.items.length > 0)) {

@@ -623,7 +623,7 @@ describe("full session flow", () => {
 describe("event system", () => {
   it("on returns this for chaining", () => {
     const quiz = new OpenQuizzer();
-    const result = quiz.on("stateChange", () => {});
+    const result = quiz.on("stateChange", () => { });
     assert.equal(result, quiz);
   });
 
@@ -785,5 +785,112 @@ describe("session length cap", () => {
     quiz.loadProblems(problems, 0);
     quiz.start();
     assert.equal(quiz.progress.total, 10);
+  });
+});
+
+// =============================================
+// Weighting system
+// =============================================
+
+describe("weighting system", () => {
+  function getProblemTypes(quiz) {
+    const types = [];
+    // Access internal problems by iterating
+    // We have to rely on side channels since there's no public API to get all problems
+    // But we know next() iterates.
+    quiz.start();
+    while (quiz.state === "practicing") {
+      types.push(quiz.problem.type);
+      if (quiz.progress.current < quiz.progress.total) { // Avoid completing
+        // Hack: manually advance index without answering to inspect all
+        // Actually, we can just answer correctly to move fast
+        const p = quiz.problem;
+        if (p.type === 'multiple-choice') quiz.selectOption(p.correct);
+        else if (p.type === 'numeric-input') quiz.submitNumeric(String(p.answer));
+        else if (p.type === 'ordering') p.correctOrder.forEach(i => quiz.placeOrderingItem(i));
+        else if (p.type === 'multi-select') {
+          p.correctIndices.forEach(i => quiz.toggleMultiSelect(i));
+          quiz.submitMultiSelect();
+        }
+        else if (p.type === 'two-stage') {
+          quiz.selectOption(p.stages[0].correct);
+          // wait for timeout? Test env might need handling.
+          // Actually, let's just use a simpler approach: 
+          // The shuffle happens in loadProblems.
+          // We can check the first problem of many sessions to see distribution.
+        }
+        quiz.next();
+      } else {
+        break;
+      }
+    }
+    return types;
+  }
+
+  // Simpler approach: check distribution of first question over many runs
+  it("high weight type appears first more often", () => {
+    const typeWeights = { "multiple-choice": 1, "numeric-input": 100 };
+    const problems = [
+      mcProblem("m1"),
+      numericProblem("n1"),
+    ];
+
+    let numericFirst = 0;
+    const iterations = 50;
+
+    for (let i = 0; i < iterations; i++) {
+      const quiz = new OpenQuizzer({ typeWeights });
+      quiz.loadProblems(problems);
+      quiz.start();
+      if (quiz.problem.type === "numeric-input") {
+        numericFirst++;
+      }
+    }
+
+    // With 100:1 ratio, numeric should be first nearly always (>= 90%)
+    // But statistically could fail rare, so we'll be lenient but expect majority
+    assert.ok(numericFirst > 40, `Numeric should be first most times (got ${numericFirst}/${iterations})`);
+  });
+
+  it("0 weight suppresses type", () => {
+    const typeWeights = { "multiple-choice": 1, "numeric-input": 0 };
+    const problems = [
+      mcProblem("m1"),
+      mcProblem("m2"),
+      numericProblem("n1"),
+    ];
+
+    // Test multiple times to ensure it never appears
+    for (let i = 0; i < 10; i++) {
+      const quiz = new OpenQuizzer({ typeWeights });
+      quiz.loadProblems(problems);
+      quiz.start();
+
+      while (quiz.state === "practicing") {
+        assert.notEqual(quiz.problem.type, "numeric-input");
+        if (quiz.problem.type === 'multiple-choice') quiz.selectOption(0); // arbitrary answer
+        if (quiz.progress.current === quiz.progress.total) break;
+        quiz.next();
+      }
+    }
+  });
+
+  it("defaults to 1 if weight unspecified", () => {
+    const typeWeights = { "multiple-choice": 100 };
+    // numeric-input undefined => default 1
+
+    // Ratio 100:1. MC should dominate.
+    const problems = [mcProblem("m1"), numericProblem("n1")];
+    let mcFirst = 0;
+    const iterations = 50;
+
+    for (let i = 0; i < iterations; i++) {
+      const quiz = new OpenQuizzer({ typeWeights });
+      quiz.loadProblems(problems);
+      quiz.start();
+      if (quiz.problem.type === "multiple-choice") mcFirst++;
+    }
+
+    assert.ok(mcFirst > 40, `MC should be first most times (got ${mcFirst}/${iterations})`);
   });
 });

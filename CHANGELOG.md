@@ -7,6 +7,12 @@
 - Added `Commit Attribution` guidance for agent-generated commits.
 - Replaced `CLAUDE.md` contents with a compatibility pointer to `AGENTS.md`.
 
+## v2.3: Weighting system
+
+- New `CONFIG.typeWeights` option to control question type probability
+- Allows increasing frequency of rare question types (e.g. numeric, ordering)
+- Setting weight to 0 removes a type from sessions entirely
+
 ## v2.2: Session length cap
 
 - New `CONFIG.maxProblems` option to limit "Practice All" sessions to a set number of questions (default: unlimited)
