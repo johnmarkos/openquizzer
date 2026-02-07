@@ -12,6 +12,12 @@ Supports 5 question types: multiple choice, numeric input, ordering, multi-selec
 
 No build system. Edit files directly and push to `main` for deployment.
 
+**Formatting:** Use Prettier standard formatting. Run `npx prettier --write .` before committing.
+
+- Single quotes
+- 2 space indent
+- No trailing whitespace
+
 **Local preview:** Content loads via `fetch()`, so you need a local server (e.g., `python3 -m http.server`). Opening `index.html` via `file://` won't load problems.
 
 **Tests:** `node --test openquizzer.test.js` — 48 tests covering the engine. Zero dependencies, uses Node's built-in test runner (Node 20+). Run tests after any engine changes.
@@ -82,6 +88,7 @@ The goal: a future agent instance should be productive faster because of what we
 Insights captured from development:
 
 **Engine extraction:**
+
 - When splitting MIXED functions (part logic, part DOM), the engine emits events with all data the UI needs — the UI should never need to reach back into the engine for display info
 - Store defensive copies of caller-provided arrays (`[...problems]`) — the caller may mutate the original
 - Watch for dead fields after extraction: if a field is set but never read (no getter, no internal use), delete it
@@ -89,6 +96,7 @@ Insights captured from development:
 - Guard against division by zero in numeric grading when `correctValue === 0`
 
 **Testing:**
+
 - Node's built-in test runner (`node:test`) is sufficient for a zero-dependency project
 - Node 24+ detects ES modules natively; Node 20 needs `--experimental-detect-module`
 - Test fixtures as factory functions (`mcProblem('id', correct)`) keep tests concise
@@ -96,6 +104,7 @@ Insights captured from development:
 - Test through shuffling by reading `quiz.problem` to get the current problem — don't assume problem order
 
 **Readability review:**
+
 - Rename methods to match what they actually do, not what the caller conceptually wants — `#showCurrentQuestion` became `#emitCurrentQuestion` because the engine doesn't show anything
 - Group DOM element references by view/section with mini-comments — a wall of 35 `getElementById` calls is hard to navigate
 - Label default/fallback branches in conditional chains — the "else" at the end of a tolerance check isn't obviously "default 50%"
@@ -103,5 +112,6 @@ Insights captured from development:
 - Inline comments on non-obvious string operations prevent readers from having to mentally execute the code
 
 **Dead code removal:**
+
 - When features evolve, old code paths become orphaned — search for unused functions/elements during code review
 - Remove dead code promptly; it confuses future readers and accumulates

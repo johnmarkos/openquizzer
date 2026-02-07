@@ -7,6 +7,12 @@
 - Added `Commit Attribution` guidance for agent-generated commits.
 - Replaced `CLAUDE.md` contents with a compatibility pointer to `AGENTS.md`.
 
+## v2.2: Session length cap
+
+- New `CONFIG.maxProblems` option to limit "Practice All" sessions to a set number of questions (default: unlimited)
+- Useful for quick practice sessions or limiting session length for students
+- Works with weighted shuffling to ensure balanced question types even in short sessions
+
 ## v2.1: Configurable problem ID display
 
 - New `CONFIG.showProblemId` option shows problem ID above each question (off by default)

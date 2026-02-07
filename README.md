@@ -71,6 +71,7 @@ The filename must match the pattern `unit-{unitId}-chapter-{chapterNum}.json`.
 ```
 
 Tolerance options:
+
 - `"exact"` -- must match exactly
 - `"order-of-magnitude"` -- within 10x either direction
 - A number like `0.1` -- within 10% of the correct answer
@@ -133,28 +134,26 @@ Edit `config.js`:
 
 ```js
 export const CONFIG = {
-  title: 'My Quiz',
-  description: 'A short description shown on the landing page.',
+  title: "My Quiz",
+  description: "A short description shown on the landing page.",
   // Optional: renders a navigation link above the landing page
   // backLink: { href: '../', text: '\u2190 Back' },
   units: [
     {
       id: 1,
-      title: 'Geography',
+      title: "Geography",
       chapters: [
-        { num: 1, title: 'Capitals', ready: true },
-        { num: 2, title: 'Rivers', ready: true },
-        { num: 3, title: 'Mountains', ready: false }  // not yet created
-      ]
+        { num: 1, title: "Capitals", ready: true },
+        { num: 2, title: "Rivers", ready: true },
+        { num: 3, title: "Mountains", ready: false }, // not yet created
+      ],
     },
     {
       id: 2,
-      title: 'History',
-      chapters: [
-        { num: 1, title: 'Ancient World', ready: true }
-      ]
-    }
-  ]
+      title: "History",
+      chapters: [{ num: 1, title: "Ancient World", ready: true }],
+    },
+  ],
 };
 ```
 
@@ -166,10 +165,10 @@ All styling is in the `<style>` block of `index.html`. The design uses CSS custo
 
 ```css
 :root {
-  --bg: #0d1117;        /* background */
-  --accent: #58a6ff;    /* buttons, highlights */
-  --success: #3fb950;   /* correct answers */
-  --error: #f85149;     /* incorrect answers */
+  --bg: #0d1117; /* background */
+  --accent: #58a6ff; /* buttons, highlights */
+  --success: #3fb950; /* correct answers */
+  --error: #f85149; /* incorrect answers */
   /* ... */
 }
 ```
@@ -181,16 +180,22 @@ Change these values to match your brand. The `@media (prefers-color-scheme: ligh
 The quiz engine (`openquizzer.js`) is a standalone ES module with no DOM dependencies. You can use it to build a completely different UI.
 
 ```js
-import { OpenQuizzer } from './openquizzer.js';
+import { OpenQuizzer } from "./openquizzer.js";
 
 const quiz = new OpenQuizzer();
 
 quiz.loadProblems(problems);
 quiz.start();
 
-quiz.on('questionShow', ({ problem, type }) => { /* render */ });
-quiz.on('optionSelected', ({ correct, explanation }) => { /* feedback */ });
-quiz.on('complete', ({ correct, total, percentage }) => { /* results */ });
+quiz.on("questionShow", ({ problem, type }) => {
+  /* render */
+});
+quiz.on("optionSelected", ({ correct, explanation }) => {
+  /* feedback */
+});
+quiz.on("complete", ({ correct, total, percentage }) => {
+  /* results */
+});
 ```
 
 ### State machine
@@ -203,45 +208,45 @@ idle  -->  practicing  -->  answered  -->  complete
 
 ### Methods
 
-| Method | Description |
-|---|---|
-| `loadProblems(problems)` | Load an array of problem objects |
-| `start()` | Begin the session |
-| `next()` | Advance to next question (or complete) |
-| `retry()` | Reshuffle and restart |
-| `reset()` | Return to idle |
-| `selectOption(index)` | Answer MC or two-stage question |
-| `toggleMultiSelect(index)` | Toggle a multi-select option |
-| `submitMultiSelect()` | Grade multi-select answer |
-| `submitNumeric(string)` | Grade numeric answer (parses K/M/B/T) |
-| `placeOrderingItem(index)` | Place an item in the ordering sequence |
+| Method                      | Description                               |
+| --------------------------- | ----------------------------------------- |
+| `loadProblems(problems)`    | Load an array of problem objects          |
+| `start()`                   | Begin the session                         |
+| `next()`                    | Advance to next question (or complete)    |
+| `retry()`                   | Reshuffle and restart                     |
+| `reset()`                   | Return to idle                            |
+| `selectOption(index)`       | Answer MC or two-stage question           |
+| `toggleMultiSelect(index)`  | Toggle a multi-select option              |
+| `submitMultiSelect()`       | Grade multi-select answer                 |
+| `submitNumeric(string)`     | Grade numeric answer (parses K/M/B/T)     |
+| `placeOrderingItem(index)`  | Place an item in the ordering sequence    |
 | `removeOrderingItem(index)` | Remove an item from the ordering sequence |
-| `resetOrdering()` | Clear the ordering sequence |
+| `resetOrdering()`           | Clear the ordering sequence               |
 
 ### Getters
 
-| Getter | Returns |
-|---|---|
-| `state` | `'idle'` \| `'practicing'` \| `'answered'` \| `'complete'` |
-| `progress` | `{ current, total }` |
-| `score` | `{ correct, total, percentage }` |
-| `problem` | Current problem object (null in idle/complete) |
-| `answers` | Array of answer records |
+| Getter     | Returns                                                    |
+| ---------- | ---------------------------------------------------------- |
+| `state`    | `'idle'` \| `'practicing'` \| `'answered'` \| `'complete'` |
+| `progress` | `{ current, total }`                                       |
+| `score`    | `{ correct, total, percentage }`                           |
+| `problem`  | Current problem object (null in idle/complete)             |
+| `answers`  | Array of answer records                                    |
 
 ### Events
 
-| Event | When |
-|---|---|
-| `stateChange` | Any state transition |
-| `questionShow` | New question ready to display |
-| `optionSelected` | MC or two-stage answer graded |
-| `twoStageAdvance` | Between two-stage parts |
-| `numericResult` | Numeric answer graded |
-| `multiSelectToggle` | Multi-select option toggled |
-| `multiSelectResult` | Multi-select answer graded |
-| `orderingUpdate` | Ordering item placed/removed |
-| `orderingResult` | Ordering answer graded |
-| `complete` | Session finished |
+| Event               | When                          |
+| ------------------- | ----------------------------- |
+| `stateChange`       | Any state transition          |
+| `questionShow`      | New question ready to display |
+| `optionSelected`    | MC or two-stage answer graded |
+| `twoStageAdvance`   | Between two-stage parts       |
+| `numericResult`     | Numeric answer graded         |
+| `multiSelectToggle` | Multi-select option toggled   |
+| `multiSelectResult` | Multi-select answer graded    |
+| `orderingUpdate`    | Ordering item placed/removed  |
+| `orderingResult`    | Ordering answer graded        |
+| `complete`          | Session finished              |
 
 ## Tests
 
