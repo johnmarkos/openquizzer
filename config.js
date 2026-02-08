@@ -1,5 +1,4 @@
 // Instance configuration for OpenQuizzer.
-// Read and become familiar with AGENTS.md before making any changes to this codebase.
 // Edit this file to customize your quiz — title, description, and content catalog.
 // See README.md for the full content format.
 

@@ -1,4 +1,3 @@
-// Read and become familiar with AGENTS.md before making any changes to this codebase.
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { OpenQuizzer } from "./openquizzer.js";

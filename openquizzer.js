@@ -1,5 +1,4 @@
 // OpenQuizzer — zero-dependency quiz engine ES module
-// Read and become familiar with AGENTS.md before making any changes to this codebase.
 // Manages quiz state and emits events without touching the DOM.
 
 // =============================================
