@@ -195,6 +195,10 @@ export class OpenQuizzer {
     return [...this.#answers];
   }
 
+  /**
+   * Returns a snapshot of the current session results.
+   * Safe to call at any point (idle, practicing, answered, complete).
+   */
   getSessionSummary() {
     const score = this.score;
     const problemsById = new Map(this.#problems.map((problem) => [problem.id, problem]));
@@ -557,53 +561,46 @@ export class OpenQuizzer {
       correct: answer.correct,
     };
 
-    if (type === "multiple-choice") {
-      return {
-        ...base,
-        userAnswer: answer.selected,
-        correctAnswer: problem.correct,
-      };
+    switch (type) {
+      case "multiple-choice":
+        return {
+          ...base,
+          userAnswer: answer.selected,
+          correctAnswer: problem.correct,
+        };
+      case "numeric-input":
+        return {
+          ...base,
+          userAnswer: answer.userValue,
+          correctAnswer: problem.answer,
+        };
+      case "ordering":
+        return {
+          ...base,
+          userAnswer: [...answer.userOrder],
+          correctAnswer: [...problem.correctOrder],
+        };
+      case "multi-select":
+        return {
+          ...base,
+          userAnswer: [...answer.selected],
+          correctAnswer: [...problem.correctIndices],
+        };
+      case "two-stage":
+        return {
+          ...base,
+          userAnswer: answer.stageAnswers.map((stageAnswer) => ({
+            selected: stageAnswer.selected,
+            correct: stageAnswer.correct,
+          })),
+          correctAnswer: problem.stages.map((stage) => stage.correct),
+        };
+      default:
+        return {
+          ...base,
+          userAnswer: null,
+          correctAnswer: null,
+        };
     }
-
-    if (type === "numeric-input") {
-      return {
-        ...base,
-        userAnswer: answer.userValue,
-        correctAnswer: problem.answer,
-      };
-    }
-
-    if (type === "ordering") {
-      return {
-        ...base,
-        userAnswer: [...answer.userOrder],
-        correctAnswer: [...problem.correctOrder],
-      };
-    }
-
-    if (type === "multi-select") {
-      return {
-        ...base,
-        userAnswer: [...answer.selected],
-        correctAnswer: [...problem.correctIndices],
-      };
-    }
-
-    if (type === "two-stage") {
-      return {
-        ...base,
-        userAnswer: answer.stageAnswers.map((stageAnswer) => ({
-          selected: stageAnswer.selected,
-          correct: stageAnswer.correct,
-        })),
-        correctAnswer: problem.stages.map((stage) => stage.correct),
-      };
-    }
-
-    return {
-      ...base,
-      userAnswer: null,
-      correctAnswer: null,
-    };
   }
 }

@@ -125,3 +125,5 @@ Insights captured from development:
 
 - Prefer a normalized export shape (`userAnswer`/`correctAnswer`) across question types so the UI can render summaries without type-specific branching everywhere.
 - Include session export data in the `complete` event payload to preserve the engine/UI event boundary.
+- For phone-first flows, support partial-session exports by reading `getSessionSummary()` before completion instead of coupling export to only the `complete` event.
+- For readability, prefer `switch` when mapping behavior by question type; it is easier for non-experts to scan than long `if/else` chains.

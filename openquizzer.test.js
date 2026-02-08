@@ -876,6 +876,32 @@ describe("getters", () => {
     assert.deepEqual(byType.get("two-stage").correctAnswer, [0, 1]);
     assert.equal(Array.isArray(byType.get("two-stage").userAnswer), true);
   });
+
+  it("getSessionSummary supports partial sessions before completion", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0), mcProblem("m2", 1)]);
+    quiz.start();
+
+    const firstProblem = quiz.problem;
+    quiz.selectOption(firstProblem.correct); // one answered, session still incomplete
+
+    const summary = quiz.getSessionSummary();
+    assert.equal(quiz.state, "answered");
+    assert.deepEqual(summary.score, { correct: 1, total: 1, percentage: 100 });
+    assert.equal(summary.results.length, 1);
+    assert.equal(summary.results[0].id, firstProblem.id);
+    assert.equal(summary.results[0].type, "multiple-choice");
+  });
+
+  it("getSessionSummary returns empty results when started but unanswered", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0), mcProblem("m2", 1)]);
+    quiz.start();
+
+    const summary = quiz.getSessionSummary();
+    assert.deepEqual(summary.score, { correct: 0, total: 0, percentage: 0 });
+    assert.deepEqual(summary.results, []);
+  });
 });
 
 // =============================================

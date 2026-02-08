@@ -806,6 +806,7 @@
         <span id="correct-count">0</span> of
         <span id="total-count">0</span> correct
       </div>
+      <div id="session-status-label" class="score-label hidden-container"></div>
       <div class="results-export">
         <div class="results-export-actions">
           <button class="nav-btn secondary" id="copy-json-btn">
@@ -886,6 +887,7 @@
     const scoreEl = document.getElementById("score");
     const correctCountEl = document.getElementById("correct-count");
     const totalCountEl = document.getElementById("total-count");
+    const sessionStatusLabel = document.getElementById("session-status-label");
     const retryBtn = document.getElementById("retry-btn");
     const backBtn = document.getElementById("back-btn");
     const copyJsonBtn = document.getElementById("copy-json-btn");
@@ -899,11 +901,15 @@
     let latestSessionSummary = null;
 
     function buildSummaryText(summary) {
-      if (!summary || !summary.results || summary.results.length === 0) {
+      if (!summary || !summary.score || !Array.isArray(summary.results)) {
         return "No session results available.";
       }
 
       const header = `Score: ${summary.score.correct}/${summary.score.total} (${summary.score.percentage}%)`;
+      if (summary.results.length === 0) {
+        return [header, "", "(No answered questions yet.)"].join("\n");
+      }
+
       const lines = summary.results.map((result, index) => {
         const verdict = result.correct ? "Correct" : "Incorrect";
         const questionLabel = result.question ? ` ${result.question}` : "";
@@ -919,7 +925,7 @@
 
     async function copySummaryJsonToClipboard() {
       if (!latestSessionSummary) {
-        setResultsExportStatus("No completed session to export yet.");
+        setResultsExportStatus("No session results available to export yet.");
         return;
       }
 
@@ -962,6 +968,32 @@
         resultsSummary.classList.add("hidden-container");
         showSummaryBtn.textContent = "Show Summary";
       }
+    }
+
+    function showResultsView({
+      summary,
+      isPartial,
+      answeredCount,
+      totalProblems,
+    }) {
+      if (!summary || !summary.score) return;
+
+      latestSessionSummary = summary;
+      scoreEl.textContent = `${summary.score.percentage}%`;
+      correctCountEl.textContent = String(summary.score.correct);
+      totalCountEl.textContent = String(summary.score.total);
+      if (isPartial) {
+        sessionStatusLabel.textContent = `Partial session: answered ${answeredCount} of ${totalProblems}`;
+        sessionStatusLabel.classList.remove("hidden-container");
+      } else {
+        sessionStatusLabel.textContent = "";
+        sessionStatusLabel.classList.add("hidden-container");
+      }
+      resultsSummary.classList.add("hidden-container");
+      showSummaryBtn.textContent = "Show Summary";
+      setResultsExportStatus("");
+      practice.classList.remove("active");
+      results.classList.add("active");
     }
 
     function renderOrderingQuestion(problem, shuffledItems) {
@@ -1060,16 +1092,13 @@
       },
     );
 
-    quiz.on("complete", ({ correct, total, percentage, sessionSummary }) => {
-      latestSessionSummary = sessionSummary || quiz.getSessionSummary();
-      scoreEl.textContent = `${percentage}%`;
-      correctCountEl.textContent = String(correct);
-      totalCountEl.textContent = String(total);
-      resultsSummary.classList.add("hidden-container");
-      showSummaryBtn.textContent = "Show Summary";
-      setResultsExportStatus("");
-      practice.classList.remove("active");
-      results.classList.add("active");
+    quiz.on("complete", ({ total, sessionSummary }) => {
+      showResultsView({
+        summary: sessionSummary || quiz.getSessionSummary(),
+        isPartial: false,
+        answeredCount: total,
+        totalProblems: total,
+      });
     });
 
     // ... existing code ...
@@ -1189,7 +1218,22 @@
     });
 
     backBtn.addEventListener("click", backToMenu);
-    quitBtn.addEventListener("click", backToMenu);
+    quitBtn.addEventListener("click", () => {
+      if (quiz.state !== "practicing" && quiz.state !== "answered") {
+        backToMenu();
+        return;
+      }
+
+      const summary = quiz.getSessionSummary();
+      const answeredCount = summary.score.total;
+      const totalProblems = quiz.progress.total;
+      showResultsView({
+        summary,
+        isPartial: true,
+        answeredCount,
+        totalProblems,
+      });
+    });
 
     // =============================================
     // Initialize
