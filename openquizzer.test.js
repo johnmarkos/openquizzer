@@ -1253,6 +1253,51 @@ describe("index.html UI wiring contracts", () => {
   });
 
   // -----------------------------------------
+  // Runtime meta tag customization
+  // -----------------------------------------
+
+  describe("runtime meta tag customization", () => {
+    it("sets document.title from CONFIG.title", () => {
+      assert.ok(
+        script.includes("document.title = CONFIG.title"),
+        "missing document.title = CONFIG.title — page title won't reflect instance config",
+      );
+    });
+
+    it("sets meta description from CONFIG.description", () => {
+      assert.ok(
+        script.includes('.setAttribute("content", CONFIG.description)'),
+        "missing meta description update — description won't reflect instance config",
+      );
+    });
+  });
+
+  // -----------------------------------------
+  // Template placeholder integrity
+  // -----------------------------------------
+  //
+  // The static <title> and <meta description> are placeholders that
+  // instances override. These tests ensure the template repo keeps its
+  // generic values — instance-specific values should never be committed
+  // here. Instances should customize these tests (see AGENTS.md).
+
+  describe("template placeholder integrity", () => {
+    it("static <title> is the template default", () => {
+      assert.ok(
+        html.includes("<title>OpenQuizzer</title>"),
+        "static <title> was changed from template default — instances customize this, not the template",
+      );
+    });
+
+    it("static meta description is the template default", () => {
+      assert.ok(
+        html.includes('content="An OpenQuizzer instance"'),
+        "static meta description was changed from template default — instances customize this, not the template",
+      );
+    });
+  });
+
+  // -----------------------------------------
   // Agent artifact rejection
   // -----------------------------------------
 
