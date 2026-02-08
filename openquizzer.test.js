@@ -902,6 +902,31 @@ describe("getters", () => {
     assert.deepEqual(summary.score, { correct: 0, total: 0, percentage: 0 });
     assert.deepEqual(summary.results, []);
   });
+
+  it("getSessionSummary returns empty score/results in idle", () => {
+    const quiz = new OpenQuizzer();
+    const summary = quiz.getSessionSummary();
+    assert.deepEqual(summary.score, { correct: 0, total: 0, percentage: 0 });
+    assert.deepEqual(summary.results, []);
+    assert.ok(!Number.isNaN(Date.parse(summary.timestamp)));
+  });
+
+  it("getSessionSummary returns defensive copies", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([multiSelectProblem("ms1", [0, 2])]);
+    quiz.start();
+    quiz.toggleMultiSelect(0);
+    quiz.toggleMultiSelect(2);
+    quiz.submitMultiSelect();
+
+    const summary1 = quiz.getSessionSummary();
+    summary1.results[0].userAnswer.push(99);
+    summary1.results[0].correctAnswer.push(88);
+
+    const summary2 = quiz.getSessionSummary();
+    assert.deepEqual(summary2.results[0].userAnswer, [0, 2]);
+    assert.deepEqual(summary2.results[0].correctAnswer, [0, 2]);
+  });
 });
 
 // =============================================

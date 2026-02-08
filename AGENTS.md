@@ -106,6 +106,7 @@ Insights captured from development:
 - Test through shuffling by reading `quiz.problem` to get the current problem — don't assume problem order
 - **Initialization matters:** When changing interaction models (e.g., tap-to-fill -> sortable list), ensure the internal state (like `#orderingOrder`) is initialized immediately.
 - **HTML/JS sync:** When changing UI components (e.g., replacing 'Reset' with 'Submit'), verify both the HTML structure and the JS element references match.
+- To mitigate UI risk without browser tests, add engine-level export contract tests (shape, lifecycle states, defensive-copy behavior) so pre-commit catches regressions.
 
 
 **Readability review:**
