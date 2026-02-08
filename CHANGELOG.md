@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.6: UI Wiring Contract Tests
+
+- Added static contract tests that read `index.html` as a string and verify critical UI wiring exists
+- Tests cover: 16 function definitions, 9 engine event listeners, 5 DOM event bindings, 5 element references, 1 agent artifact check (36 tests total)
+- Would have caught the v2.4 accidental deletion of ~200 lines of UI code that all 59 engine tests missed
+- Zero new dependencies — uses `node:fs` to read file, simple string/regex checks
+- Runs in existing pre-commit hook, adds <5ms to test suite
+
 ## v2.5: Export/Show Results
 
 - Added engine `getSessionSummary()` API with timestamp, score, and normalized per-question result details

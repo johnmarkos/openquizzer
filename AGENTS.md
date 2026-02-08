@@ -101,12 +101,12 @@ Insights captured from development:
 - Node 24+ detects ES modules natively; Node 20 needs `--experimental-detect-module`
 - Test fixtures as factory functions (`mcProblem('id', correct)`) keep tests concise
 - The `collectEvents` pattern (register listener, return array, assert after actions) works well for event-driven APIs
-- Test fixtures as factory functions (`mcProblem('id', correct)`) keep tests concise
-- The `collectEvents` pattern (register listener, return array, assert after actions) works well for event-driven APIs
 - Test through shuffling by reading `quiz.problem` to get the current problem — don't assume problem order
 - **Initialization matters:** When changing interaction models (e.g., tap-to-fill -> sortable list), ensure the internal state (like `#orderingOrder`) is initialized immediately.
 - **HTML/JS sync:** When changing UI components (e.g., replacing 'Reset' with 'Submit'), verify both the HTML structure and the JS element references match.
 - To mitigate UI risk without browser tests, add engine-level export contract tests (shape, lifecycle states, defensive-copy behavior) so pre-commit catches regressions.
+- **Static UI wiring tests beat heavyweight E2E for LLM-driven workflows.** Reading `index.html` as a string and checking for function definitions, `quiz.on("event"` registrations, and `addEventListener` bindings catches accidental deletions (especially LLM context truncation artifacts like `// ... existing code ...`) at near-zero cost. No browser, no Playwright, <5ms. Tests the agent, not the code.
+- When string-matching Prettier-formatted code, use regex with `\s*` for patterns that Prettier may break across lines (e.g., `quiz.on(\n  "event"`). Simple `.includes()` is fine for patterns Prettier keeps on one line (e.g., `function name(`).
 - Keep hooks versioned in `.githooks/` and use `npm prepare` to set `core.hooksPath`; this avoids local-only `.git/hooks` drift across clones.
 
 **Readability review:**

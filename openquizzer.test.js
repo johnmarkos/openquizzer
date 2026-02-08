@@ -374,22 +374,9 @@ describe("ordering", () => {
     quiz.start();
 
     const initialItems = showEvents[0].shuffledItems;
-    // We need to move items to match correctOrder [0, 1, 2]
 
-    // Helper to find current index of an original index
-    const getIdx = (originalIdx) => {
-      // Access via side-channel or just use the public emitted state if we were a real UI
-      // For tests, we can use the last orderingUpdate or just rely on the fact 
-      // that we are simulating the user who sees the list.
-      // Let's just blindly sort it to match the test requirement.
-      // But we don't know the internal state without peeking or tracking updates.
-      return -1; // Placeholder, see logic below
-    };
-
-    // Instead of complex solving, let's just use the fact that we can move 
-    // items from position A to B.
-    // Let's spy on the emitted order.
-    let currentOrder = initialItems.map(i => i.originalIndex);
+    // Track visual order locally to selection-sort into correct order
+    let currentOrder = initialItems.map((i) => i.originalIndex);
 
     // Sort logic: Selection sort
     for (let i = 0; i < problem.correctOrder.length; i++) {
@@ -427,7 +414,7 @@ describe("ordering", () => {
 
     // To be safe, let's force a wrong order. Correct is [0, 1, 2].
     // We'll trigger a move to ensure we have a state, then fail.
-    // Actually, simply submitting the shuffled order is almost certainly wrong, 
+    // Actually, simply submitting the shuffled order is almost certainly wrong,
     // but better to be deterministic.
 
     // Let's force it to be [2, 1, 0]
@@ -439,7 +426,7 @@ describe("ordering", () => {
     // restart to capture event
     quiz.retry();
     const initialItems = showEvents[0].shuffledItems;
-    let currentOrder = initialItems.map(i => i.originalIndex);
+    let currentOrder = initialItems.map((i) => i.originalIndex);
 
     const targetOrder = [2, 1, 0];
 
@@ -665,7 +652,9 @@ describe("full session flow", () => {
         quiz.submitNumeric(String(p.answer));
       } else if (type === "ordering") {
         // Sort to match correctOrder
-        let currentOrder = currentShuffledItems.map(item => item.originalIndex);
+        let currentOrder = currentShuffledItems.map(
+          (item) => item.originalIndex,
+        );
 
         for (let k = 0; k < p.correctOrder.length; k++) {
           const targetOriginalIndex = p.correctOrder[k];
@@ -700,7 +689,7 @@ describe("full session flow", () => {
 describe("event system", () => {
   it("on returns this for chaining", () => {
     const quiz = new OpenQuizzer();
-    const result = quiz.on("stateChange", () => { });
+    const result = quiz.on("stateChange", () => {});
     assert.equal(result, quiz);
   });
 
@@ -839,7 +828,9 @@ describe("getters", () => {
       } else if (type === "numeric-input") {
         quiz.submitNumeric(String(problem.answer));
       } else if (type === "ordering") {
-        let currentOrder = currentOrderingItems.map((item) => item.originalIndex);
+        let currentOrder = currentOrderingItems.map(
+          (item) => item.originalIndex,
+        );
         for (let i = 0; i < problem.correctOrder.length; i++) {
           const targetOriginalIndex = problem.correctOrder[i];
           const currentPos = currentOrder.indexOf(targetOriginalIndex);
@@ -852,7 +843,9 @@ describe("getters", () => {
         }
         quiz.submitOrdering();
       } else if (type === "multi-select") {
-        problem.correctIndices.forEach((index) => quiz.toggleMultiSelect(index));
+        problem.correctIndices.forEach((index) =>
+          quiz.toggleMultiSelect(index),
+        );
         quiz.submitMultiSelect();
       } else if (type === "two-stage") {
         problem.stages.forEach((stage) => quiz.selectOption(stage.correct));
@@ -868,7 +861,9 @@ describe("getters", () => {
     assert.deepEqual(summary.score, { correct: 5, total: 5, percentage: 100 });
     assert.equal(summary.results.length, 5);
 
-    const byType = new Map(summary.results.map((result) => [result.type, result]));
+    const byType = new Map(
+      summary.results.map((result) => [result.type, result]),
+    );
     assert.deepEqual(byType.get("multiple-choice").correctAnswer, 2);
     assert.equal(byType.get("numeric-input").correctAnswer, 100);
     assert.deepEqual(byType.get("ordering").correctAnswer, [0, 1, 2]);
@@ -986,29 +981,41 @@ describe("session length cap", () => {
 describe("weighting system", () => {
   function getProblemTypes(quiz) {
     const types = [];
-    // Access internal problems by iterating
-    // We have to rely on side channels since there's no public API to get all problems
-    // But we know next() iterates.
+    // Track latest shuffledItems for ordering questions
+    let lastShuffledItems = null;
+    quiz.on("questionShow", (e) => {
+      lastShuffledItems = e.shuffledItems;
+    });
+
     quiz.start();
     while (quiz.state === "practicing") {
       types.push(quiz.problem.type);
-      if (quiz.progress.current < quiz.progress.total) { // Avoid completing
-        // Hack: manually advance index without answering to inspect all
-        // Actually, we can just answer correctly to move fast
+      if (quiz.progress.current < quiz.progress.total) {
         const p = quiz.problem;
-        if (p.type === 'multiple-choice') quiz.selectOption(p.correct);
-        else if (p.type === 'numeric-input') quiz.submitNumeric(String(p.answer));
-        else if (p.type === 'ordering') p.correctOrder.forEach(i => quiz.placeOrderingItem(i));
-        else if (p.type === 'multi-select') {
-          p.correctIndices.forEach(i => quiz.toggleMultiSelect(i));
+        if (p.type === "multiple-choice") {
+          quiz.selectOption(p.correct);
+        } else if (p.type === "numeric-input") {
+          quiz.submitNumeric(String(p.answer));
+        } else if (p.type === "ordering") {
+          // Selection-sort into correct order via moveOrderingItem, then submit
+          const order = lastShuffledItems.map((i) => i.originalIndex);
+          for (let j = 0; j < p.correctOrder.length; j++) {
+            const from = order.indexOf(p.correctOrder[j]);
+            if (from !== j) {
+              quiz.moveOrderingItem(from, j);
+              const item = order[from];
+              order.splice(from, 1);
+              order.splice(j, 0, item);
+            }
+          }
+          quiz.submitOrdering();
+        } else if (p.type === "multi-select") {
+          p.correctIndices.forEach((i) => quiz.toggleMultiSelect(i));
           quiz.submitMultiSelect();
-        }
-        else if (p.type === 'two-stage') {
-          quiz.selectOption(p.stages[0].correct);
-          // wait for timeout? Test env might need handling.
-          // Actually, let's just use a simpler approach: 
-          // The shuffle happens in loadProblems.
-          // We can check the first problem of many sessions to see distribution.
+        } else if (p.type === "two-stage") {
+          for (let s = 0; s < p.stages.length; s++) {
+            quiz.selectOption(p.stages[s].correct);
+          }
         }
         quiz.next();
       } else {
@@ -1021,10 +1028,7 @@ describe("weighting system", () => {
   // Simpler approach: check distribution of first question over many runs
   it("high weight type appears first more often", () => {
     const typeWeights = { "multiple-choice": 1, "numeric-input": 100 };
-    const problems = [
-      mcProblem("m1"),
-      numericProblem("n1"),
-    ];
+    const problems = [mcProblem("m1"), numericProblem("n1")];
 
     let numericFirst = 0;
     const iterations = 50;
@@ -1040,16 +1044,15 @@ describe("weighting system", () => {
 
     // With 100:1 ratio, numeric should be first nearly always (>= 90%)
     // But statistically could fail rare, so we'll be lenient but expect majority
-    assert.ok(numericFirst > 40, `Numeric should be first most times (got ${numericFirst}/${iterations})`);
+    assert.ok(
+      numericFirst > 40,
+      `Numeric should be first most times (got ${numericFirst}/${iterations})`,
+    );
   });
 
   it("0 weight suppresses type", () => {
     const typeWeights = { "multiple-choice": 1, "numeric-input": 0 };
-    const problems = [
-      mcProblem("m1"),
-      mcProblem("m2"),
-      numericProblem("n1"),
-    ];
+    const problems = [mcProblem("m1"), mcProblem("m2"), numericProblem("n1")];
 
     // Test multiple times to ensure it never appears
     for (let i = 0; i < 10; i++) {
@@ -1059,7 +1062,7 @@ describe("weighting system", () => {
 
       while (quiz.state === "practicing") {
         assert.notEqual(quiz.problem.type, "numeric-input");
-        if (quiz.problem.type === 'multiple-choice') quiz.selectOption(0); // arbitrary answer
+        if (quiz.problem.type === "multiple-choice") quiz.selectOption(0); // arbitrary answer
         if (quiz.progress.current === quiz.progress.total) break;
         quiz.next();
       }
@@ -1082,6 +1085,183 @@ describe("weighting system", () => {
       if (quiz.problem.type === "multiple-choice") mcFirst++;
     }
 
-    assert.ok(mcFirst > 40, `MC should be first most times (got ${mcFirst}/${iterations})`);
+    assert.ok(
+      mcFirst > 40,
+      `MC should be first most times (got ${mcFirst}/${iterations})`,
+    );
+  });
+});
+
+// =============================================
+// index.html UI wiring contracts
+// =============================================
+//
+// Static contract tests that read index.html as a string and verify
+// critical UI functions, event listeners, and DOM bindings exist.
+// These would have caught the v2.4 accidental deletion of ~200 lines
+// of UI code that all 59 engine-only tests missed.
+
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const html = readFileSync(join(__dirname, "index.html"), "utf-8");
+
+// Extract the <script type="module"> block for targeted checks
+const scriptMatch = html.match(/<script type="module">([\s\S]*?)<\/script>/);
+const script = scriptMatch ? scriptMatch[1] : "";
+
+describe("index.html UI wiring contracts", () => {
+  // -----------------------------------------
+  // Function definitions
+  // -----------------------------------------
+
+  describe("function definitions", () => {
+    const requiredFunctions = [
+      // UI helpers
+      "showError",
+      "hideError",
+      "hideAllQuestionTypes",
+      // Landing/navigation
+      "renderUnitList",
+      "loadUnit",
+      "loadChapter",
+      "startPractice",
+      "backToMenu",
+      // Renderers
+      "renderMultipleChoiceQuestion",
+      "renderNumericQuestion",
+      "renderMultiSelectQuestion",
+      "renderTwoStageQuestion",
+      "renderOrderingQuestion",
+      // Feedback/results
+      "showFeedback",
+      "showResultsView",
+      "updateOrderingDisplay",
+    ];
+
+    for (const name of requiredFunctions) {
+      it(`defines function ${name}`, () => {
+        assert.ok(
+          script.includes(`function ${name}(`),
+          `missing function ${name}() — UI will not function`,
+        );
+      });
+    }
+  });
+
+  // -----------------------------------------
+  // Engine event listener registrations
+  // -----------------------------------------
+
+  describe("engine event listener registrations", () => {
+    const requiredEvents = [
+      "questionShow",
+      "optionSelected",
+      "twoStageAdvance",
+      "numericResult",
+      "multiSelectToggle",
+      "multiSelectResult",
+      "orderingUpdate",
+      "orderingResult",
+      "complete",
+    ];
+
+    for (const event of requiredEvents) {
+      it(`registers quiz.on("${event}")`, () => {
+        // Prettier may break quiz.on(\n  "event" across lines
+        const pattern = new RegExp(`quiz\\.on\\(\\s*"${event}"`);
+        assert.ok(
+          pattern.test(script),
+          `missing quiz.on("${event}") — engine event will be ignored`,
+        );
+      });
+    }
+  });
+
+  // -----------------------------------------
+  // DOM event bindings
+  // -----------------------------------------
+
+  describe("DOM event bindings", () => {
+    it("binds optionsEl click delegation", () => {
+      assert.ok(
+        script.includes('optionsEl.addEventListener("click"') ||
+          script.includes("optionsEl.addEventListener('click'"),
+        "missing optionsEl click listener — MC/multi-select clicks will be ignored",
+      );
+    });
+
+    it("binds numericSubmit click", () => {
+      assert.ok(
+        script.includes('numericSubmit.addEventListener("click"') ||
+          script.includes("numericSubmit.addEventListener('click'"),
+        "missing numericSubmit click listener — numeric answers cannot be submitted",
+      );
+    });
+
+    it("binds numericInput keydown for Enter", () => {
+      assert.ok(
+        script.includes('numericInput.addEventListener("keydown"') ||
+          script.includes("numericInput.addEventListener('keydown'"),
+        "missing numericInput keydown listener — Enter key will not submit",
+      );
+    });
+
+    it("binds orderingItems click for tap-to-swap", () => {
+      assert.ok(
+        script.includes('orderingItems.addEventListener("click"') ||
+          script.includes("orderingItems.addEventListener('click'"),
+        "missing orderingItems click listener — tap-to-swap will not work",
+      );
+    });
+
+    it("binds orderingItems keydown for keyboard nav", () => {
+      assert.ok(
+        script.includes('orderingItems.addEventListener("keydown"') ||
+          script.includes("orderingItems.addEventListener('keydown'"),
+        "missing orderingItems keydown listener — keyboard ordering will not work",
+      );
+    });
+  });
+
+  // -----------------------------------------
+  // DOM element references (spot-checks)
+  // -----------------------------------------
+
+  describe("DOM element references", () => {
+    const requiredIds = [
+      "multi-submit-container",
+      "stage-indicator",
+      "stage-context",
+      "stage-context-text",
+      "ordering-submit",
+    ];
+
+    for (const id of requiredIds) {
+      it(`references getElementById("${id}")`, () => {
+        // Prettier may break getElementById(\n  "id" across lines
+        const pattern = new RegExp(`getElementById\\(\\s*"${id}"`);
+        assert.ok(
+          pattern.test(script),
+          `missing getElementById("${id}") — element will be unreachable`,
+        );
+      });
+    }
+  });
+
+  // -----------------------------------------
+  // Agent artifact rejection
+  // -----------------------------------------
+
+  describe("agent artifact rejection", () => {
+    it("contains no '// ... existing code ...' markers", () => {
+      assert.ok(
+        !html.includes("// ... existing code ..."),
+        "found '// ... existing code ...' marker — agent artifact left in file",
+      );
+    });
   });
 });
