@@ -23,9 +23,22 @@ Then open `http://localhost:8000`.
 
 - Runtime/app: zero dependencies.
 - Engine tests: zero dependencies (uses Node's built-in test runner).
-- Contributor tooling: the pre-commit hook checks formatting with Prettier (`prettier` if installed globally, otherwise `npx prettier`) and runs tests.
+- Contributor tooling: one dev dependency (`prettier`) used by the repo's pre-commit hook for formatting checks.
 
-This means quiz instances created from the template stay dependency-free, while contributors may optionally use tooling for formatting consistency.
+This means quiz instances created from the template stay dependency-free, while contributor workflows use lightweight dev tooling for consistency.
+
+For contributors:
+
+```
+npm install
+```
+
+`npm install` runs `prepare` to configure `core.hooksPath=.githooks` for this clone.
+
+The shared hook in `.githooks/pre-commit` runs:
+
+- `prettier --check` on staged source/docs files
+- `node --test openquizzer.test.js`
 
 ## Content Format
 

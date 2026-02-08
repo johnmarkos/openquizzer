@@ -1,0 +1,28 @@
+#!/bin/bash
+# Pre-commit hook: run formatting checks and tests before allowing commit.
+
+set -e
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR"
+
+PRETTIER_BIN="$ROOT_DIR/node_modules/.bin/prettier"
+if [ ! -x "$PRETTIER_BIN" ]; then
+  echo "Error: Prettier is not installed. Run: npm install"
+  exit 1
+fi
+
+mapfile -t STAGED_FILES < <(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|html|css|json|md)$' || true)
+
+if [ ${#STAGED_FILES[@]} -gt 0 ]; then
+  echo "Running Prettier check on staged files..."
+  "$PRETTIER_BIN" --check "${STAGED_FILES[@]}"
+  echo "Prettier check passed."
+else
+  echo "No staged files for Prettier check."
+fi
+
+echo "Running tests..."
+node --test openquizzer.test.js
+
+echo "Tests passed."

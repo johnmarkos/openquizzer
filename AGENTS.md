@@ -4,7 +4,7 @@ Guidance for agents working on this repository.
 
 ## Project Overview
 
-**OpenQuizzer** is a zero-dependency, mobile-friendly quiz engine and template repo. Anyone can create a quiz site by clicking "Use this template" on GitHub, editing `config.js`, adding content JSON files, and deploying to GitHub Pages. No build step, no npm, no framework.
+**OpenQuizzer** is a zero-runtime-dependency, mobile-friendly quiz engine and template repo. Anyone can create a quiz site by clicking "Use this template" on GitHub, editing `config.js`, adding content JSON files, and deploying to GitHub Pages. No build step, no framework.
 
 Supports 5 question types: multiple choice, numeric input, ordering, multi-select, and two-stage. Automatic light/dark mode.
 
@@ -12,7 +12,7 @@ Supports 5 question types: multiple choice, numeric input, ordering, multi-selec
 
 No build system. Edit files directly and push to `main` for deployment.
 
-**Formatting:** Use Prettier standard formatting. Run `npx prettier --write .` before committing.
+**Formatting:** Use Prettier standard formatting. Install contributor tooling once with `npm install`, then run `npm run format` before committing.
 
 - Single quotes
 - 2 space indent
@@ -20,7 +20,7 @@ No build system. Edit files directly and push to `main` for deployment.
 
 **Local preview:** Content loads via `fetch()`, so you need a local server (e.g., `python3 -m http.server`). Opening `index.html` via `file://` won't load problems.
 
-**Tests:** `node --test openquizzer.test.js` — 48 tests covering the engine. Zero dependencies, uses Node's built-in test runner (Node 20+). Run tests after any engine changes.
+**Tests:** `node --test openquizzer.test.js` — engine tests with Node's built-in test runner (Node 20+). No test dependencies required. Run tests after any engine changes.
 
 **Testing philosophy (Goldilocks):** Write meaningful tests that verify important behavior and prevent regressions. Not too many (don't test implementation details), not too few (don't skip edge cases that have bitten us). Good targets: state machine transitions, grading correctness for all question types, numeric parsing edge cases, event payloads. Use factory functions for test data and the `collectEvents` pattern for event-driven assertions.
 
@@ -107,7 +107,7 @@ Insights captured from development:
 - **Initialization matters:** When changing interaction models (e.g., tap-to-fill -> sortable list), ensure the internal state (like `#orderingOrder`) is initialized immediately.
 - **HTML/JS sync:** When changing UI components (e.g., replacing 'Reset' with 'Submit'), verify both the HTML structure and the JS element references match.
 - To mitigate UI risk without browser tests, add engine-level export contract tests (shape, lifecycle states, defensive-copy behavior) so pre-commit catches regressions.
-
+- Keep hooks versioned in `.githooks/` and use `npm prepare` to set `core.hooksPath`; this avoids local-only `.git/hooks` drift across clones.
 
 **Readability review:**
 
