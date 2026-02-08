@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.5: Export/Show Results
+
+- Added engine `getSessionSummary()` API with timestamp, score, and normalized per-question result details
+- Added `sessionSummary` payload to the engine `complete` event for UI consumption
+- Added results view export tools: `Copy JSON` and `Show Summary`
+- Added clipboard copy fallback behavior when async clipboard APIs are unavailable
+- Added tests for session summary structure and complete-event summary payload
+
 ## v2.4: Selection-Based Reordering (Keyboard Accessibility)
 
 - Replaced "Tap to Rank" with "Selection-Based Reordering" for Ordering questions

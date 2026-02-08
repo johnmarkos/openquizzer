@@ -195,6 +195,25 @@ export class OpenQuizzer {
     return [...this.#answers];
   }
 
+  getSessionSummary() {
+    const score = this.score;
+    const problemsById = new Map(this.#problems.map((problem) => [problem.id, problem]));
+    const results = this.#answers.map((answer) => {
+      const problem = problemsById.get(answer.problemId);
+      return this.#buildSummaryResult(problem, answer);
+    });
+
+    return {
+      timestamp: new Date().toISOString(),
+      score: {
+        correct: score.correct,
+        total: score.total,
+        percentage: score.percentage,
+      },
+      results,
+    };
+  }
+
   // --- Lifecycle ---
 
   loadProblems(problems, maxProblems = 0) {
@@ -508,12 +527,83 @@ export class OpenQuizzer {
 
   #complete() {
     const finalScore = this.score;
+    const sessionSummary = this.getSessionSummary();
     this.#setState("complete");
     this.#emit("complete", {
       correct: finalScore.correct,
       total: finalScore.total,
       percentage: finalScore.percentage,
       answers: this.answers,
+      sessionSummary,
     });
+  }
+
+  #buildSummaryResult(problem, answer) {
+    if (!problem) {
+      return {
+        id: answer.problemId,
+        type: "unknown",
+        correct: answer.correct,
+        userAnswer: null,
+        correctAnswer: null,
+      };
+    }
+
+    const type = problem.type || "multiple-choice";
+    const base = {
+      id: answer.problemId,
+      type,
+      question: problem.question || "",
+      correct: answer.correct,
+    };
+
+    if (type === "multiple-choice") {
+      return {
+        ...base,
+        userAnswer: answer.selected,
+        correctAnswer: problem.correct,
+      };
+    }
+
+    if (type === "numeric-input") {
+      return {
+        ...base,
+        userAnswer: answer.userValue,
+        correctAnswer: problem.answer,
+      };
+    }
+
+    if (type === "ordering") {
+      return {
+        ...base,
+        userAnswer: [...answer.userOrder],
+        correctAnswer: [...problem.correctOrder],
+      };
+    }
+
+    if (type === "multi-select") {
+      return {
+        ...base,
+        userAnswer: [...answer.selected],
+        correctAnswer: [...problem.correctIndices],
+      };
+    }
+
+    if (type === "two-stage") {
+      return {
+        ...base,
+        userAnswer: answer.stageAnswers.map((stageAnswer) => ({
+          selected: stageAnswer.selected,
+          correct: stageAnswer.correct,
+        })),
+        correctAnswer: problem.stages.map((stage) => stage.correct),
+      };
+    }
+
+    return {
+      ...base,
+      userAnswer: null,
+      correctAnswer: null,
+    };
   }
 }

@@ -4,7 +4,7 @@ Future features and improvements for OpenQuizzer.
 
 ## Now (v2.5: Persistence & Results)
 
-- [ ] **Export/Show Results** — Show session results (correct/incorrect list) as JSON or a view for easy sharing
+- [x] **Export/Show Results** — Show session results (correct/incorrect list) as JSON or a view for easy sharing
 - [ ] **localStorage progress tracking** — Remember which problems user has seen, when, and score
 - [ ] **Basic spaced repetition** — Surface problems user got wrong more frequently
 - [ ] **Statistics view** — Show accuracy by chapter, question type, time period

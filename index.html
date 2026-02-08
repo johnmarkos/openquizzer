@@ -379,6 +379,41 @@
       margin-bottom: 2rem;
     }
 
+    .results-export {
+      margin-bottom: 1.25rem;
+      padding: 0.875rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      text-align: left;
+    }
+
+    .results-export-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .results-export-status {
+      min-height: 1.25rem;
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .results-summary {
+      margin-top: 0.5rem;
+      padding: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      font-size: 0.75rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      max-height: 220px;
+      overflow: auto;
+    }
+
     /* Quit link in practice mode */
     .quit-link {
       color: var(--text-muted);
@@ -771,6 +806,18 @@
         <span id="correct-count">0</span> of
         <span id="total-count">0</span> correct
       </div>
+      <div class="results-export">
+        <div class="results-export-actions">
+          <button class="nav-btn secondary" id="copy-json-btn">
+            Copy JSON
+          </button>
+          <button class="nav-btn secondary" id="show-summary-btn">
+            Show Summary
+          </button>
+        </div>
+        <div id="results-export-status" class="results-export-status"></div>
+        <pre id="results-summary" class="results-summary hidden-container"></pre>
+      </div>
       <div class="nav-row results-nav">
         <button class="nav-btn secondary" id="retry-btn">Try Again</button>
         <button class="nav-btn" id="back-btn">Back to Menu</button>
@@ -816,6 +863,7 @@
       "feedback-explanation",
     );
     const nextBtn = document.getElementById("next-btn");
+    const multiSubmit = document.getElementById("multi-submit");
 
     // Numeric input elements
     const numericContainer = document.getElementById("numeric-container");
@@ -834,9 +882,87 @@
     const orderingItems = document.getElementById("ordering-items");
     const orderingSubmit = document.getElementById("ordering-submit");
 
+    // Results view elements
+    const scoreEl = document.getElementById("score");
+    const correctCountEl = document.getElementById("correct-count");
+    const totalCountEl = document.getElementById("total-count");
+    const retryBtn = document.getElementById("retry-btn");
+    const backBtn = document.getElementById("back-btn");
+    const copyJsonBtn = document.getElementById("copy-json-btn");
+    const showSummaryBtn = document.getElementById("show-summary-btn");
+    const resultsExportStatus = document.getElementById("results-export-status");
+    const resultsSummary = document.getElementById("results-summary");
+
     // ... existing code ...
 
     let selectedOrderingIndex = -1; // -1 means nothing selected
+    let latestSessionSummary = null;
+
+    function buildSummaryText(summary) {
+      if (!summary || !summary.results || summary.results.length === 0) {
+        return "No session results available.";
+      }
+
+      const header = `Score: ${summary.score.correct}/${summary.score.total} (${summary.score.percentage}%)`;
+      const lines = summary.results.map((result, index) => {
+        const verdict = result.correct ? "Correct" : "Incorrect";
+        const questionLabel = result.question ? ` ${result.question}` : "";
+        return `${index + 1}. [${verdict}] (${result.type})${questionLabel}`;
+      });
+
+      return [header, "", ...lines].join("\n");
+    }
+
+    function setResultsExportStatus(message) {
+      resultsExportStatus.textContent = message || "";
+    }
+
+    async function copySummaryJsonToClipboard() {
+      if (!latestSessionSummary) {
+        setResultsExportStatus("No completed session to export yet.");
+        return;
+      }
+
+      const jsonText = JSON.stringify(latestSessionSummary, null, 2);
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(jsonText);
+          setResultsExportStatus("Copied JSON to clipboard.");
+          return;
+        }
+      } catch (error) {
+        // Fall through to execCommand fallback.
+      }
+
+      const tempTextArea = document.createElement("textarea");
+      tempTextArea.value = jsonText;
+      tempTextArea.setAttribute("readonly", "true");
+      tempTextArea.style.position = "absolute";
+      tempTextArea.style.left = "-9999px";
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+
+      const didCopy = document.execCommand("copy");
+      document.body.removeChild(tempTextArea);
+      setResultsExportStatus(
+        didCopy
+          ? "Copied JSON to clipboard."
+          : "Could not copy automatically. Please copy manually.",
+      );
+    }
+
+    function toggleSummaryView() {
+      const isHidden = resultsSummary.classList.contains("hidden-container");
+      if (isHidden) {
+        resultsSummary.textContent = buildSummaryText(latestSessionSummary);
+        resultsSummary.classList.remove("hidden-container");
+        showSummaryBtn.textContent = "Hide Summary";
+      } else {
+        resultsSummary.classList.add("hidden-container");
+        showSummaryBtn.textContent = "Show Summary";
+      }
+    }
 
     function renderOrderingQuestion(problem, shuffledItems) {
       questionText.textContent = problem.question;
@@ -933,6 +1059,18 @@
         showFeedback(correct, explanation);
       },
     );
+
+    quiz.on("complete", ({ correct, total, percentage, sessionSummary }) => {
+      latestSessionSummary = sessionSummary || quiz.getSessionSummary();
+      scoreEl.textContent = `${percentage}%`;
+      correctCountEl.textContent = String(correct);
+      totalCountEl.textContent = String(total);
+      resultsSummary.classList.add("hidden-container");
+      showSummaryBtn.textContent = "Show Summary";
+      setResultsExportStatus("");
+      practice.classList.remove("active");
+      results.classList.add("active");
+    });
 
     // ... existing code ...
 
@@ -1034,6 +1172,14 @@
 
     nextBtn.addEventListener("click", () => {
       quiz.next();
+    });
+
+    copyJsonBtn.addEventListener("click", () => {
+      copySummaryJsonToClipboard();
+    });
+
+    showSummaryBtn.addEventListener("click", () => {
+      toggleSummaryView();
     });
 
     retryBtn.addEventListener("click", () => {

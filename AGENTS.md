@@ -120,3 +120,8 @@ Insights captured from development:
 
 - When features evolve, old code paths become orphaned — search for unused functions/elements during code review
 - Remove dead code promptly; it confuses future readers and accumulates
+
+**Results export:**
+
+- Prefer a normalized export shape (`userAnswer`/`correctAnswer`) across question types so the UI can render summaries without type-specific branching everywhere.
+- Include session export data in the `complete` event payload to preserve the engine/UI event boundary.

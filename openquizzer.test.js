@@ -629,6 +629,9 @@ describe("full session flow", () => {
     assert.equal(completeEvents[0].correct, 2);
     assert.equal(completeEvents[0].total, 3);
     assert.equal(completeEvents[0].percentage, 67);
+    assert.equal(typeof completeEvents[0].sessionSummary, "object");
+    assert.equal(completeEvents[0].sessionSummary.score.correct, 2);
+    assert.equal(completeEvents[0].sessionSummary.score.total, 3);
 
     // Retry
     quiz.retry();
@@ -809,6 +812,69 @@ describe("getters", () => {
     quiz.next(); // complete
     quiz.retry();
     assert.equal(quiz.progress.total, 2); // retry still has 2
+  });
+
+  it("getSessionSummary returns score and type-aware answer details", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([
+      mcProblem("m1", 2),
+      numericProblem("n1", { answer: 100, tolerance: "exact" }),
+      orderingProblem("o1"),
+      multiSelectProblem("ms1", [1, 3]),
+      twoStageProblem("ts1"),
+    ]);
+
+    let currentOrderingItems = [];
+    quiz.on("questionShow", ({ shuffledItems }) => {
+      if (shuffledItems) currentOrderingItems = shuffledItems;
+    });
+
+    quiz.start();
+    while (quiz.state !== "complete") {
+      const problem = quiz.problem;
+      const type = problem.type || "multiple-choice";
+
+      if (type === "multiple-choice") {
+        quiz.selectOption(problem.correct);
+      } else if (type === "numeric-input") {
+        quiz.submitNumeric(String(problem.answer));
+      } else if (type === "ordering") {
+        let currentOrder = currentOrderingItems.map((item) => item.originalIndex);
+        for (let i = 0; i < problem.correctOrder.length; i++) {
+          const targetOriginalIndex = problem.correctOrder[i];
+          const currentPos = currentOrder.indexOf(targetOriginalIndex);
+          if (currentPos !== i) {
+            quiz.moveOrderingItem(currentPos, i);
+            const item = currentOrder[currentPos];
+            currentOrder.splice(currentPos, 1);
+            currentOrder.splice(i, 0, item);
+          }
+        }
+        quiz.submitOrdering();
+      } else if (type === "multi-select") {
+        problem.correctIndices.forEach((index) => quiz.toggleMultiSelect(index));
+        quiz.submitMultiSelect();
+      } else if (type === "two-stage") {
+        problem.stages.forEach((stage) => quiz.selectOption(stage.correct));
+      }
+
+      quiz.next();
+    }
+
+    const summary = quiz.getSessionSummary();
+
+    assert.equal(typeof summary.timestamp, "string");
+    assert.ok(!Number.isNaN(Date.parse(summary.timestamp)));
+    assert.deepEqual(summary.score, { correct: 5, total: 5, percentage: 100 });
+    assert.equal(summary.results.length, 5);
+
+    const byType = new Map(summary.results.map((result) => [result.type, result]));
+    assert.deepEqual(byType.get("multiple-choice").correctAnswer, 2);
+    assert.equal(byType.get("numeric-input").correctAnswer, 100);
+    assert.deepEqual(byType.get("ordering").correctAnswer, [0, 1, 2]);
+    assert.deepEqual(byType.get("multi-select").correctAnswer, [1, 3]);
+    assert.deepEqual(byType.get("two-stage").correctAnswer, [0, 1]);
+    assert.equal(Array.isArray(byType.get("two-stage").userAnswer), true);
   });
 });
 
