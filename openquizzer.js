@@ -201,7 +201,9 @@ export class OpenQuizzer {
    */
   getSessionSummary() {
     const score = this.score;
-    const problemsById = new Map(this.#problems.map((problem) => [problem.id, problem]));
+    const problemsById = new Map(
+      this.#problems.map((problem) => [problem.id, problem]),
+    );
     const results = this.#answers.map((answer) => {
       const problem = problemsById.get(answer.problemId);
       return this.#buildSummaryResult(problem, answer);
@@ -562,31 +564,31 @@ export class OpenQuizzer {
     };
 
     switch (type) {
-      case "multiple-choice":
+      case "multiple-choice": // selected option index vs correct index
         return {
           ...base,
           userAnswer: answer.selected,
           correctAnswer: problem.correct,
         };
-      case "numeric-input":
+      case "numeric-input": // raw user value vs expected answer
         return {
           ...base,
           userAnswer: answer.userValue,
           correctAnswer: problem.answer,
         };
-      case "ordering":
+      case "ordering": // user's index sequence vs correct sequence
         return {
           ...base,
           userAnswer: [...answer.userOrder],
           correctAnswer: [...problem.correctOrder],
         };
-      case "multi-select":
+      case "multi-select": // selected indices vs correct indices
         return {
           ...base,
           userAnswer: [...answer.selected],
           correctAnswer: [...problem.correctIndices],
         };
-      case "two-stage":
+      case "two-stage": // per-stage selected/correct pairs
         return {
           ...base,
           userAnswer: answer.stageAnswers.map((stageAnswer) => ({
@@ -595,7 +597,7 @@ export class OpenQuizzer {
           })),
           correctAnswer: problem.stages.map((stage) => stage.correct),
         };
-      default:
+      default: // unknown type fallback
         return {
           ...base,
           userAnswer: null,
