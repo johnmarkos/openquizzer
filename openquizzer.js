@@ -340,48 +340,32 @@ export class OpenQuizzer {
     });
   }
 
-  placeOrderingItem(originalIndex) {
+  moveOrderingItem(fromIndex, toIndex) {
     if (this.#state !== "practicing") return;
     if (this.#answered) return;
 
-    // If already placed, ignore (use removeOrderingItem to remove)
-    if (this.#orderingOrder.includes(originalIndex)) return;
-
-    this.#orderingOrder.push(originalIndex);
-    const problem = this.#problems[this.#currentIndex];
-    const complete = this.#orderingOrder.length === problem.items.length;
-
-    this.#emit("orderingUpdate", {
-      order: [...this.#orderingOrder],
-      complete,
-    });
-
-    if (complete) {
-      this.#gradeOrdering();
+    if (
+      fromIndex < 0 ||
+      fromIndex >= this.#orderingOrder.length ||
+      toIndex < 0 ||
+      toIndex >= this.#orderingOrder.length
+    ) {
+      return;
     }
-  }
 
-  removeOrderingItem(originalIndex) {
-    if (this.#state !== "practicing") return;
-    if (this.#answered) return;
-
-    const pos = this.#orderingOrder.indexOf(originalIndex);
-    if (pos === -1) return;
-
-    this.#orderingOrder.splice(pos, 1);
+    const item = this.#orderingOrder[fromIndex];
+    this.#orderingOrder.splice(fromIndex, 1);
+    this.#orderingOrder.splice(toIndex, 0, item);
 
     this.#emit("orderingUpdate", {
       order: [...this.#orderingOrder],
-      complete: false,
     });
   }
 
-  resetOrdering() {
+  submitOrdering() {
     if (this.#state !== "practicing") return;
     if (this.#answered) return;
-
-    this.#orderingOrder = [];
-    this.#emit("orderingUpdate", { order: [], complete: false });
+    this.#gradeOrdering();
   }
 
   // --- Private helpers ---
@@ -409,6 +393,7 @@ export class OpenQuizzer {
     if (type === "ordering") {
       const shuffledIndices = [...Array(problem.items.length).keys()];
       shuffleArray(shuffledIndices);
+      this.#orderingOrder = [...shuffledIndices];
       shuffledItems = shuffledIndices.map((i) => ({
         originalIndex: i,
         text: problem.items[i],

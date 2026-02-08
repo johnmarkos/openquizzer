@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.4: Selection-Based Reordering (Keyboard Accessibility)
+
+- Replaced "Tap to Rank" with "Selection-Based Reordering" for Ordering questions
+- Accessible via keyboard: Tab to enter list, Arrow keys to navigate, Space/Enter to select/swap/confirm
+- Mobile-friendly: Tap to select, tap another to swap
+- Engine now initializes ordering items immediately upon load
+- Added explicit "Submit Order" button
+- Removed auto-grading and "Reset" button in favor of explicit submission
+
 ## Agent instruction migration (2026-02-07)
 
 - Added `AGENTS.md` as the canonical instruction file by porting existing `CLAUDE.md` guidance.

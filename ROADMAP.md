@@ -6,7 +6,7 @@ Future features and improvements for OpenQuizzer.
 
 - [x] **Weighting system** — Configure probability weights per question type so minority types appear with reasonable frequency despite smaller counts
 - [x] **Session length cap** — Optional `maxProblems` config to limit "Practice All" sessions (default: unlimited)
-- [ ] **Keyboard accessibility for ordering** — Arrow keys to reorder, Enter to confirm
+- [x] **Keyboard accessibility for ordering** — Arrow keys to reorder, Enter to confirm
 
 ## Next (v1.1)
 

@@ -101,7 +101,12 @@ Insights captured from development:
 - Node 24+ detects ES modules natively; Node 20 needs `--experimental-detect-module`
 - Test fixtures as factory functions (`mcProblem('id', correct)`) keep tests concise
 - The `collectEvents` pattern (register listener, return array, assert after actions) works well for event-driven APIs
+- Test fixtures as factory functions (`mcProblem('id', correct)`) keep tests concise
+- The `collectEvents` pattern (register listener, return array, assert after actions) works well for event-driven APIs
 - Test through shuffling by reading `quiz.problem` to get the current problem — don't assume problem order
+- **Initialization matters:** When changing interaction models (e.g., tap-to-fill -> sortable list), ensure the internal state (like `#orderingOrder`) is initialized immediately.
+- **HTML/JS sync:** When changing UI components (e.g., replacing 'Reset' with 'Submit'), verify both the HTML structure and the JS element references match.
+
 
 **Readability review:**
 
