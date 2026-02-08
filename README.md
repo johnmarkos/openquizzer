@@ -1,6 +1,6 @@
 # OpenQuizzer
 
-A fast, mobile-friendly quiz app you can deploy in minutes. No build step, no dependencies, no framework. Just HTML, CSS, and a single JavaScript module.
+A fast, mobile-friendly quiz app you can deploy in minutes. No build step, no runtime dependencies, no framework. Just HTML, CSS, and a single JavaScript module.
 
 Supports 5 question types: multiple choice, numeric input, ordering, multi-select, and two-stage. Automatic light/dark mode. Works great on phones.
 
@@ -18,6 +18,14 @@ python3 -m http.server
 ```
 
 Then open `http://localhost:8000`.
+
+## Dependency Model
+
+- Runtime/app: zero dependencies.
+- Engine tests: zero dependencies (uses Node's built-in test runner).
+- Contributor tooling: the pre-commit hook checks formatting with Prettier (`prettier` if installed globally, otherwise `npx prettier`) and runs tests.
+
+This means quiz instances created from the template stay dependency-free, while contributors may optionally use tooling for formatting consistency.
 
 ## Content Format
 
@@ -233,9 +241,9 @@ idle  -->  practicing  -->  answered  -->  complete
 | `toggleMultiSelect(index)`  | Toggle a multi-select option              |
 | `submitMultiSelect()`       | Grade multi-select answer                 |
 | `submitNumeric(string)`     | Grade numeric answer (parses K/M/B/T)     |
-| `placeOrderingItem(index)`  | Place an item in the ordering sequence    |
-| `removeOrderingItem(index)` | Remove an item from the ordering sequence |
-| `resetOrdering()`           | Clear the ordering sequence               |
+| `moveOrderingItem(from,to)` | Move an ordering item                     |
+| `submitOrdering()`          | Grade ordering answer                     |
+| `getSessionSummary()`       | Return exportable session results summary |
 
 ### Getters
 
@@ -264,7 +272,7 @@ idle  -->  practicing  -->  answered  -->  complete
 
 ## Tests
 
-The engine has 48 tests using Node's built-in test runner:
+The engine tests use Node's built-in test runner:
 
 ```
 node --test openquizzer.test.js
