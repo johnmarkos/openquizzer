@@ -2,20 +2,15 @@
 
 Future features and improvements for OpenQuizzer.
 
-## Now (Next Release)
+## Now (v2.5: Persistence & Results)
 
-- [x] **Weighting system** — Configure probability weights per question type so minority types appear with reasonable frequency despite smaller counts
-- [x] **Session length cap** — Optional `maxProblems` config to limit "Practice All" sessions (default: unlimited)
-- [x] **Keyboard accessibility for ordering** — Arrow keys to reorder, Enter to confirm
-
-## Next (v1.1)
-
+- [ ] **Export/Show Results** — Show session results (correct/incorrect list) as JSON or a view for easy sharing
 - [ ] **localStorage progress tracking** — Remember which problems user has seen, when, and score
 - [ ] **Basic spaced repetition** — Surface problems user got wrong more frequently
 - [ ] **Statistics view** — Show accuracy by chapter, question type, time period
 - [ ] **Skip button** — Let users skip a problem without penalty (tracked separately)
 
-## Later (v2+)
+## Next (v3.0: Advanced Features)
 
 - [ ] **Partial credit scoring** — Ordering: credit for items in correct relative position. Multi-select: credit for each correct toggle minus incorrect
 - [ ] **Review mode** — Review missed questions at end of session. Bookmark problems for later review
@@ -27,7 +22,7 @@ Future features and improvements for OpenQuizzer.
 - [ ] **Timed mode** — Optional countdown per problem for interview pressure simulation
 - [ ] **Streak tracking** — Daily practice streaks with visual indicator
 
-## Maybe (Exploring)
+## Later (Exploring)
 
 - [ ] **Image-based questions** — Display an image as part of the question (diagrams, charts, maps). Answer types: MC, numeric, or hotspot
 - [ ] **Visual element picker** — Click regions on an image (e.g., "identify the load balancer")
