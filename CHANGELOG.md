@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.7: Single-Session Feedback
+
+- Added **skip button** — skip a problem without penalty; skipped count tracked separately from wrong answers and shown on results page
+- Added **results breakdown by question type** — accuracy grouped by type (e.g., "numeric-input: 60%, ordering: 90%") on the results page
+- Added **results breakdown by tag** — accuracy grouped by tag when problems have optional `tags` arrays; graceful no-op when absent
+- Added **session context** — `loadProblems()` accepts optional context (chapter title, unit info); included in `getSessionSummary()` for self-describing exports
+- Added **tags passthrough** — per-result `tags` array in session summary for downstream aggregation
+- Updated **summary text** — `[Skipped]` verdicts, type/tag breakdown sections appended to human-readable summary
+- Added 21 new tests (14 engine + 7 UI wiring) — 120 total, all passing
+- Added example `tags` to all sample content problems
+
 ## v2.6: UI Wiring Contract Tests
 
 - Added static contract tests that read `index.html` as a string and verify critical UI wiring exists

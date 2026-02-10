@@ -2,15 +2,15 @@
 
 Future features and improvements for OpenQuizzer.
 
-## Now (v2.7: Single-Session Feedback)
+## Done (v2.7: Single-Session Feedback)
 
 Enrich the results page with actionable feedback computed entirely from the current session. No persistence required. Every instance benefits immediately on engine/UI upgrade.
 
-- [ ] **Results breakdown by question type** — Show accuracy grouped by question type on the results page (e.g., "numeric-input: 60%, ordering: 90%"). Computed from existing session data; no content changes needed.
-- [ ] **Problem tags** — Optional `tags` array on problems (e.g., `["caching", "consistency"]`). Engine passes tags through in session summary results. Backward-compatible: no behavioral change if tags are absent. Instances add tags to their content at their own pace.
-- [ ] **Results breakdown by tag** — If problems have tags, show accuracy grouped by tag on the results page. "You nailed caching (95%) but struggled with consistency (40%)." Graceful no-op when tags are absent.
-- [ ] **Session summary includes context** — Extend `getSessionSummary()` to include chapter title, unit title, and per-problem tags. Makes summaries self-describing so they can be aggregated later without needing the original content files.
-- [ ] **Skip button** — Skip a problem without penalty. Tracked separately in results (skipped vs. wrong vs. correct). Skipped count shown on results page.
+- [x] **Results breakdown by question type** — Show accuracy grouped by question type on the results page (e.g., "numeric-input: 60%, ordering: 90%"). Computed from existing session data; no content changes needed.
+- [x] **Problem tags** — Optional `tags` array on problems (e.g., `["caching", "consistency"]`). Engine passes tags through in session summary results. Backward-compatible: no behavioral change if tags are absent. Instances add tags to their content at their own pace.
+- [x] **Results breakdown by tag** — If problems have tags, show accuracy grouped by tag on the results page. "You nailed caching (95%) but struggled with consistency (40%)." Graceful no-op when tags are absent.
+- [x] **Session summary includes context** — Extend `getSessionSummary()` to include chapter title, unit title, and per-problem tags. Makes summaries self-describing so they can be aggregated later without needing the original content files.
+- [x] **Skip button** — Skip a problem without penalty. Tracked separately in results (skipped vs. wrong vs. correct). Skipped count shown on results page.
 
 ## Next (v2.8: Session Import & Aggregate View)
 
