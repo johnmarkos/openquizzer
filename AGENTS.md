@@ -56,6 +56,7 @@ After completing each milestone, switch to a **reviewer role** and critique your
 - Dead code or unused fields after refactors
 - API surface that doesn't match what the UI actually needs
 - Missing test coverage for new functionality
+- Readability: descriptive names, section comments, labeled branches, no walls of undifferentiated code (see Readability section in Lessons Learned)
 
 Fix issues. Review again. **Iterate until the reviewer finds nothing significant.**
 

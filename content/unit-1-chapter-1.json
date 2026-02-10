@@ -5,6 +5,7 @@
     {
       "id": "mc-001",
       "type": "multiple-choice",
+      "tags": ["geography", "capitals"],
       "question": "What is the capital of France?",
       "options": ["London", "Paris", "Berlin", "Madrid"],
       "correct": 1,
@@ -13,6 +14,7 @@
     {
       "id": "mc-002",
       "type": "multiple-choice",
+      "tags": ["astronomy", "solar-system"],
       "question": "Which planet is closest to the Sun?",
       "options": ["Venus", "Earth", "Mercury", "Mars"],
       "correct": 2,
@@ -21,6 +23,7 @@
     {
       "id": "mc-003",
       "type": "multiple-choice",
+      "tags": ["chemistry"],
       "question": "What is the chemical symbol for gold?",
       "options": ["Go", "Gd", "Au", "Ag"],
       "correct": 2,
@@ -29,6 +32,7 @@
     {
       "id": "num-001",
       "type": "numeric-input",
+      "tags": ["astronomy", "calendar"],
       "question": "How many days are in a non-leap year?",
       "answer": 365,
       "unit": "days",
@@ -38,6 +42,7 @@
     {
       "id": "num-002",
       "type": "numeric-input",
+      "tags": ["sports", "measurement"],
       "question": "Roughly how many kilometers is a marathon?",
       "answer": 42,
       "unit": "km",
@@ -47,6 +52,7 @@
     {
       "id": "ord-001",
       "type": "ordering",
+      "tags": ["astronomy", "solar-system"],
       "question": "Order these planets from closest to farthest from the Sun:",
       "items": ["Earth", "Mars", "Mercury", "Venus"],
       "correctOrder": [2, 3, 0, 1],
@@ -55,6 +61,7 @@
     {
       "id": "ord-002",
       "type": "ordering",
+      "tags": ["geography"],
       "question": "Order these oceans from smallest to largest by area:",
       "items": ["Atlantic", "Arctic", "Indian", "Pacific"],
       "correctOrder": [1, 2, 0, 3],
@@ -63,6 +70,7 @@
     {
       "id": "ms-001",
       "type": "multi-select",
+      "tags": ["physics", "optics"],
       "question": "Which of the following are primary colors of light?",
       "options": ["Red", "Yellow", "Green", "Blue"],
       "correctIndices": [0, 2, 3],
@@ -71,6 +79,7 @@
     {
       "id": "ms-002",
       "type": "multi-select",
+      "tags": ["chemistry"],
       "question": "Which of these are noble gases?",
       "options": ["Helium", "Nitrogen", "Neon", "Oxygen"],
       "correctIndices": [0, 2],
@@ -79,6 +88,8 @@
     {
       "id": "ts-001",
       "type": "two-stage",
+      "tags": ["physics", "measurement"],
+      "question": "Temperature conversions",
       "stages": [
         {
           "question": "Water boils at 100 degrees in which temperature scale?",

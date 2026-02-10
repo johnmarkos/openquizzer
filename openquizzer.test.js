@@ -158,7 +158,12 @@ describe("state machine", () => {
     quiz.retry();
     assert.equal(quiz.state, "practicing");
     assert.deepEqual(quiz.progress, { current: 1, total: 2 });
-    assert.deepEqual(quiz.score, { correct: 0, total: 0, percentage: 0 });
+    assert.deepEqual(quiz.score, {
+      correct: 0,
+      total: 0,
+      percentage: 0,
+      skipped: 0,
+    });
   });
 });
 
@@ -858,7 +863,12 @@ describe("getters", () => {
 
     assert.equal(typeof summary.timestamp, "string");
     assert.ok(!Number.isNaN(Date.parse(summary.timestamp)));
-    assert.deepEqual(summary.score, { correct: 5, total: 5, percentage: 100 });
+    assert.deepEqual(summary.score, {
+      correct: 5,
+      total: 5,
+      percentage: 100,
+      skipped: 0,
+    });
     assert.equal(summary.results.length, 5);
 
     const byType = new Map(
@@ -882,7 +892,12 @@ describe("getters", () => {
 
     const summary = quiz.getSessionSummary();
     assert.equal(quiz.state, "answered");
-    assert.deepEqual(summary.score, { correct: 1, total: 1, percentage: 100 });
+    assert.deepEqual(summary.score, {
+      correct: 1,
+      total: 1,
+      percentage: 100,
+      skipped: 0,
+    });
     assert.equal(summary.results.length, 1);
     assert.equal(summary.results[0].id, firstProblem.id);
     assert.equal(summary.results[0].type, "multiple-choice");
@@ -894,14 +909,24 @@ describe("getters", () => {
     quiz.start();
 
     const summary = quiz.getSessionSummary();
-    assert.deepEqual(summary.score, { correct: 0, total: 0, percentage: 0 });
+    assert.deepEqual(summary.score, {
+      correct: 0,
+      total: 0,
+      percentage: 0,
+      skipped: 0,
+    });
     assert.deepEqual(summary.results, []);
   });
 
   it("getSessionSummary returns empty score/results in idle", () => {
     const quiz = new OpenQuizzer();
     const summary = quiz.getSessionSummary();
-    assert.deepEqual(summary.score, { correct: 0, total: 0, percentage: 0 });
+    assert.deepEqual(summary.score, {
+      correct: 0,
+      total: 0,
+      percentage: 0,
+      skipped: 0,
+    });
     assert.deepEqual(summary.results, []);
     assert.ok(!Number.isNaN(Date.parse(summary.timestamp)));
   });
@@ -1093,6 +1118,235 @@ describe("weighting system", () => {
 });
 
 // =============================================
+// Skip
+// =============================================
+
+describe("skip", () => {
+  it("advances to next question", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1"), mcProblem("m2")]);
+    quiz.start();
+    const questions = collectEvents(quiz, "questionShow");
+    quiz.skip();
+    assert.equal(quiz.state, "practicing");
+    assert.equal(questions.length, 1);
+    assert.equal(questions[0].index, 1);
+  });
+
+  it("on last question completes session", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1")]);
+    quiz.start();
+    const completes = collectEvents(quiz, "complete");
+    quiz.skip();
+    assert.equal(quiz.state, "complete");
+    assert.equal(completes.length, 1);
+  });
+
+  it("ignored outside practicing state", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1")]);
+    const skipEvents = collectEvents(quiz, "skip");
+    quiz.skip(); // idle — should be ignored
+    assert.equal(skipEvents.length, 0);
+    assert.equal(quiz.state, "idle");
+
+    quiz.start();
+    quiz.selectOption(0); // now in answered state
+    quiz.skip(); // answered — should be ignored
+    assert.equal(skipEvents.length, 0);
+    assert.equal(quiz.state, "answered");
+  });
+
+  it("skipped problems excluded from score", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([
+      mcProblem("m1", 0),
+      mcProblem("m2", 0),
+      mcProblem("m3", 0),
+    ]);
+    quiz.start();
+
+    // Skip first, answer second correctly, skip third
+    quiz.skip();
+    quiz.selectOption(quiz.problem.correct);
+    quiz.next();
+    quiz.skip();
+
+    const score = quiz.score;
+    assert.equal(score.correct, 1);
+    assert.equal(score.total, 1);
+    assert.equal(score.percentage, 100);
+    assert.equal(score.skipped, 2);
+  });
+
+  it("emits skip event with correct payload", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1"), mcProblem("m2")]);
+    quiz.start();
+    const skipEvents = collectEvents(quiz, "skip");
+    const firstProblem = quiz.problem;
+    quiz.skip();
+    assert.equal(skipEvents.length, 1);
+    assert.equal(skipEvents[0].problemId, firstProblem.id);
+    assert.equal(skipEvents[0].index, 0);
+    assert.equal(skipEvents[0].total, 2);
+  });
+});
+
+// =============================================
+// Tags
+// =============================================
+
+describe("tags", () => {
+  it("tags passed through in session summary results", () => {
+    const quiz = new OpenQuizzer();
+    const problem = mcProblem("m1", 0);
+    problem.tags = ["geography", "capitals"];
+    quiz.loadProblems([problem]);
+    quiz.start();
+    quiz.selectOption(0);
+    const summary = quiz.getSessionSummary();
+    assert.deepEqual(summary.results[0].tags, ["geography", "capitals"]);
+  });
+
+  it("missing tags default to empty array", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0)]);
+    quiz.start();
+    quiz.selectOption(0);
+    const summary = quiz.getSessionSummary();
+    assert.deepEqual(summary.results[0].tags, []);
+  });
+});
+
+// =============================================
+// Context
+// =============================================
+
+describe("context", () => {
+  it("context included in session summary", () => {
+    const quiz = new OpenQuizzer();
+    const ctx = { chapterTitle: "Ch1", unitId: 1 };
+    quiz.loadProblems([mcProblem("m1", 0)], 0, ctx);
+    quiz.start();
+    quiz.selectOption(0);
+    const summary = quiz.getSessionSummary();
+    assert.deepEqual(summary.context, { chapterTitle: "Ch1", unitId: 1 });
+  });
+
+  it("context defaults to empty object", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0)]);
+    quiz.start();
+    quiz.selectOption(0);
+    const summary = quiz.getSessionSummary();
+    assert.deepEqual(summary.context, {});
+  });
+
+  it("context cleared on reset", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0)], 0, { unitId: 1 });
+    quiz.reset();
+    const summary = quiz.getSessionSummary();
+    assert.deepEqual(summary.context, {});
+  });
+});
+
+// =============================================
+// Breakdowns
+// =============================================
+
+describe("breakdowns", () => {
+  it("breakdownByType groups correctly", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([
+      mcProblem("m1", 0),
+      mcProblem("m2", 0),
+      numericProblem("n1", { answer: 100, tolerance: "exact" }),
+    ]);
+    quiz.start();
+
+    // Answer each based on actual problem type due to shuffling
+    for (let i = 0; i < 3; i++) {
+      const p = quiz.problem;
+      if (p.type === "numeric-input") {
+        quiz.submitNumeric("100");
+      } else {
+        // Get first wrong, second right
+        if (i === 0) {
+          quiz.selectOption((p.correct + 1) % 4);
+        } else {
+          quiz.selectOption(p.correct);
+        }
+      }
+      quiz.next();
+    }
+
+    const summary = quiz.getSessionSummary();
+    const mcBreakdown = summary.breakdownByType["multiple-choice"];
+    const numBreakdown = summary.breakdownByType["numeric-input"];
+
+    assert.ok(mcBreakdown, "multiple-choice breakdown should exist");
+    assert.ok(numBreakdown, "numeric-input breakdown should exist");
+    assert.equal(mcBreakdown.total, 2);
+    assert.equal(numBreakdown.total, 1);
+    assert.equal(numBreakdown.correct, 1);
+    assert.equal(numBreakdown.percentage, 100);
+  });
+
+  it("breakdownByType excludes skipped problems", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0), mcProblem("m2", 0)]);
+    quiz.start();
+
+    quiz.skip(); // skip first
+    quiz.selectOption(quiz.problem.correct); // answer second correctly
+
+    const summary = quiz.getSessionSummary();
+    const mcBreakdown = summary.breakdownByType["multiple-choice"];
+    assert.equal(mcBreakdown.total, 1);
+    assert.equal(mcBreakdown.correct, 1);
+  });
+
+  it("breakdownByTag groups by tag", () => {
+    const quiz = new OpenQuizzer();
+    const p1 = mcProblem("m1", 0);
+    p1.tags = ["caching", "consistency"];
+    const p2 = mcProblem("m2", 0);
+    p2.tags = ["caching"];
+    quiz.loadProblems([p1, p2]);
+    quiz.start();
+
+    // Answer both correctly
+    quiz.selectOption(quiz.problem.correct);
+    quiz.next();
+    quiz.selectOption(quiz.problem.correct);
+
+    const summary = quiz.getSessionSummary();
+    assert.deepEqual(summary.breakdownByTag.caching, {
+      correct: 2,
+      total: 2,
+      percentage: 100,
+    });
+    assert.deepEqual(summary.breakdownByTag.consistency, {
+      correct: 1,
+      total: 1,
+      percentage: 100,
+    });
+  });
+
+  it("breakdownByTag returns empty object when no tags", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0)]);
+    quiz.start();
+    quiz.selectOption(0);
+    const summary = quiz.getSessionSummary();
+    assert.deepEqual(summary.breakdownByTag, {});
+  });
+});
+
+// =============================================
 // index.html UI wiring contracts
 // =============================================
 //
@@ -1140,6 +1394,10 @@ describe("index.html UI wiring contracts", () => {
       "showFeedback",
       "showResultsView",
       "updateOrderingDisplay",
+      // Breakdown renderers
+      "renderBreakdownSection",
+      "renderTypeBreakdown",
+      "renderTagBreakdown",
     ];
 
     for (const name of requiredFunctions) {
@@ -1167,6 +1425,7 @@ describe("index.html UI wiring contracts", () => {
       "orderingUpdate",
       "orderingResult",
       "complete",
+      "skip",
     ];
 
     for (const event of requiredEvents) {
@@ -1225,6 +1484,14 @@ describe("index.html UI wiring contracts", () => {
         "missing orderingItems keydown listener — keyboard ordering will not work",
       );
     });
+
+    it("binds skipBtn click", () => {
+      assert.ok(
+        script.includes('skipBtn.addEventListener("click"') ||
+          script.includes("skipBtn.addEventListener('click'"),
+        "missing skipBtn click listener — skip button will not work",
+      );
+    });
   });
 
   // -----------------------------------------
@@ -1238,6 +1505,8 @@ describe("index.html UI wiring contracts", () => {
       "stage-context",
       "stage-context-text",
       "ordering-submit",
+      "skip-btn",
+      "results-breakdown",
     ];
 
     for (const id of requiredIds) {

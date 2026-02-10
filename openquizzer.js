@@ -127,6 +127,7 @@ export class OpenQuizzer {
   #maxProblems = 0; // 0 = unlimited
   #currentIndex = 0;
   #answers = [];
+  #context = {};
 
   // Per-question state
   #answered = false;
@@ -177,12 +178,15 @@ export class OpenQuizzer {
   }
 
   get score() {
-    const correct = this.#answers.filter((a) => a.correct).length;
-    const total = this.#answers.length;
+    const answered = this.#answers.filter((a) => !a.skipped);
+    const correct = answered.filter((a) => a.correct).length;
+    const total = answered.length;
+    const skipped = this.#answers.length - total;
     return {
       correct,
       total,
       percentage: total > 0 ? Math.round((correct / total) * 100) : 0,
+      skipped,
     };
   }
 
@@ -211,20 +215,25 @@ export class OpenQuizzer {
 
     return {
       timestamp: new Date().toISOString(),
+      context: { ...this.#context },
       score: {
         correct: score.correct,
         total: score.total,
         percentage: score.percentage,
+        skipped: score.skipped,
       },
       results,
+      breakdownByType: this.#computeTypeBreakdown(),
+      breakdownByTag: this.#computeTagBreakdown(),
     };
   }
 
   // --- Lifecycle ---
 
-  loadProblems(problems, maxProblems = 0) {
+  loadProblems(problems, maxProblems = 0, context = {}) {
     this.#allProblems = [...problems];
     this.#maxProblems = maxProblems;
+    this.#context = { ...context };
     this.#problems = weightedShuffle([...problems], this.#typeWeights);
     this.#applyMaxProblems();
 
@@ -270,6 +279,7 @@ export class OpenQuizzer {
     this.#maxProblems = 0;
     this.#currentIndex = 0;
     this.#answers = [];
+    this.#context = {};
     this.#resetQuestionState();
     this.#setState("idle");
   }
@@ -391,6 +401,27 @@ export class OpenQuizzer {
     if (this.#state !== "practicing") return;
     if (this.#answered) return;
     this.#gradeOrdering();
+  }
+
+  skip() {
+    if (this.#state !== "practicing") return;
+    const problem = this.#problems[this.#currentIndex];
+    this.#answers.push({
+      problemId: problem.id,
+      skipped: true,
+      correct: false,
+    });
+    this.#emit("skip", {
+      problemId: problem.id,
+      index: this.#currentIndex,
+      total: this.#problems.length,
+    });
+    if (this.#currentIndex < this.#problems.length - 1) {
+      this.#currentIndex++;
+      this.#emitCurrentQuestion();
+    } else {
+      this.#complete();
+    }
   }
 
   // --- Private helpers ---
@@ -531,6 +562,42 @@ export class OpenQuizzer {
     });
   }
 
+  // Invariant: #answers[i] always corresponds to #problems[i] because
+  // questions are answered/skipped sequentially (no random access).
+  #computeTypeBreakdown() {
+    const breakdown = {};
+    for (const [i, answer] of this.#answers.entries()) {
+      if (answer.skipped) continue;
+      const type = this.#problems[i]?.type || "multiple-choice";
+      if (!breakdown[type]) breakdown[type] = { correct: 0, total: 0 };
+      breakdown[type].total++;
+      if (answer.correct) breakdown[type].correct++;
+    }
+    for (const entry of Object.values(breakdown)) {
+      entry.percentage =
+        entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
+    }
+    return breakdown;
+  }
+
+  #computeTagBreakdown() {
+    const breakdown = {};
+    for (const [i, answer] of this.#answers.entries()) {
+      if (answer.skipped) continue;
+      const tags = this.#problems[i]?.tags || [];
+      for (const tag of tags) {
+        if (!breakdown[tag]) breakdown[tag] = { correct: 0, total: 0 };
+        breakdown[tag].total++;
+        if (answer.correct) breakdown[tag].correct++;
+      }
+    }
+    for (const entry of Object.values(breakdown)) {
+      entry.percentage =
+        entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
+    }
+    return breakdown;
+  }
+
   #complete() {
     const finalScore = this.score;
     const sessionSummary = this.getSessionSummary();
@@ -550,6 +617,7 @@ export class OpenQuizzer {
         id: answer.problemId,
         type: "unknown",
         correct: answer.correct,
+        tags: [],
         userAnswer: null,
         correctAnswer: null,
       };
@@ -561,7 +629,12 @@ export class OpenQuizzer {
       type,
       question: problem.question || "",
       correct: answer.correct,
+      tags: problem.tags || [],
     };
+
+    if (answer.skipped) {
+      return { ...base, skipped: true, userAnswer: null, correctAnswer: null };
+    }
 
     switch (type) {
       case "multiple-choice": // selected option index vs correct index
