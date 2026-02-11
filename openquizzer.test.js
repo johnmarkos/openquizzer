@@ -1,6 +1,11 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { OpenQuizzer } from "./openquizzer.js";
+import {
+  OpenQuizzer,
+  validateSessionSummary,
+  deduplicateSessions,
+  computeAggregateStats,
+} from "./openquizzer.js";
 
 // =============================================
 // Test fixtures
@@ -1347,6 +1352,338 @@ describe("breakdowns", () => {
 });
 
 // =============================================
+// validateSessionSummary
+// =============================================
+
+describe("validateSessionSummary", () => {
+  function minimalSession() {
+    return {
+      timestamp: "2025-02-10T12:00:00.000Z",
+      score: { correct: 3, total: 5, percentage: 60, skipped: 0 },
+      results: [{ id: "m1", type: "multiple-choice", correct: true, tags: [] }],
+    };
+  }
+
+  it("valid minimal v2.5 summary (no context/tags/breakdowns)", () => {
+    const result = validateSessionSummary(minimalSession());
+    assert.equal(result.valid, true);
+    assert.deepEqual(result.errors, []);
+  });
+
+  it("valid full v2.7 summary", () => {
+    const session = {
+      ...minimalSession(),
+      context: { unitTitle: "U1", chapterTitle: "C1" },
+      breakdownByType: {
+        "multiple-choice": { correct: 3, total: 5, percentage: 60 },
+      },
+      breakdownByTag: { caching: { correct: 2, total: 3, percentage: 67 } },
+    };
+    const result = validateSessionSummary(session);
+    assert.equal(result.valid, true);
+  });
+
+  it("missing timestamp", () => {
+    const session = minimalSession();
+    delete session.timestamp;
+    const result = validateSessionSummary(session);
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.some((e) => e.includes("timestamp")));
+  });
+
+  it("invalid timestamp string", () => {
+    const session = minimalSession();
+    session.timestamp = "not-a-date";
+    const result = validateSessionSummary(session);
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.some((e) => e.includes("timestamp")));
+  });
+
+  it("missing score", () => {
+    const session = minimalSession();
+    delete session.score;
+    const result = validateSessionSummary(session);
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.some((e) => e.includes("score")));
+  });
+
+  it("missing results", () => {
+    const session = minimalSession();
+    delete session.results;
+    const result = validateSessionSummary(session);
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.some((e) => e.includes("results")));
+  });
+
+  it("non-object input (null, array, number, string)", () => {
+    for (const input of [null, [1, 2], 42, "hello"]) {
+      const result = validateSessionSummary(input);
+      assert.equal(result.valid, false);
+      assert.ok(result.errors.some((e) => e.includes("plain object")));
+    }
+  });
+});
+
+// =============================================
+// deduplicateSessions
+// =============================================
+
+describe("deduplicateSessions", () => {
+  it("no duplicates returns same length", () => {
+    const sessions = [
+      { timestamp: "2025-01-01T00:00:00Z" },
+      { timestamp: "2025-01-02T00:00:00Z" },
+    ];
+    assert.equal(deduplicateSessions(sessions).length, 2);
+  });
+
+  it("duplicate timestamps — first kept, second removed", () => {
+    const sessions = [
+      { timestamp: "2025-01-01T00:00:00Z", label: "first" },
+      { timestamp: "2025-01-01T00:00:00Z", label: "second" },
+    ];
+    const result = deduplicateSessions(sessions);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].label, "first");
+  });
+
+  it("empty array returns empty array", () => {
+    assert.deepEqual(deduplicateSessions([]), []);
+  });
+});
+
+// =============================================
+// computeAggregateStats
+// =============================================
+
+describe("computeAggregateStats", () => {
+  function makeSession({
+    timestamp = "2025-01-01T00:00:00Z",
+    correct = 3,
+    total = 5,
+    skipped = 0,
+    breakdownByType = null,
+    breakdownByTag = null,
+    context = null,
+    results = null,
+  } = {}) {
+    const session = {
+      timestamp,
+      score: {
+        correct,
+        total,
+        percentage: total > 0 ? Math.round((correct / total) * 100) : 0,
+        skipped,
+      },
+      results: results || [],
+    };
+    if (breakdownByType) session.breakdownByType = breakdownByType;
+    if (breakdownByTag) session.breakdownByTag = breakdownByTag;
+    if (context) session.context = context;
+    return session;
+  }
+
+  it("empty sessions — zero counts, empty sub-objects", () => {
+    const stats = computeAggregateStats([]);
+    assert.equal(stats.sessionCount, 0);
+    assert.equal(stats.totalAnswered, 0);
+    assert.equal(stats.totalCorrect, 0);
+    assert.equal(stats.overallPercentage, 0);
+    assert.equal(stats.totalSkipped, 0);
+    assert.deepEqual(stats.byType, {});
+    assert.deepEqual(stats.byTag, {});
+    assert.deepEqual(stats.byUnit, {});
+    assert.deepEqual(stats.byChapter, {});
+    assert.deepEqual(stats.trend, []);
+    assert.deepEqual(stats.mostMissed, []);
+  });
+
+  it("single session — matches that session's scores", () => {
+    const stats = computeAggregateStats([
+      makeSession({ correct: 4, total: 5, skipped: 1 }),
+    ]);
+    assert.equal(stats.sessionCount, 1);
+    assert.equal(stats.totalAnswered, 5);
+    assert.equal(stats.totalCorrect, 4);
+    assert.equal(stats.overallPercentage, 80);
+    assert.equal(stats.totalSkipped, 1);
+  });
+
+  it("multiple sessions — correct sum of totals", () => {
+    const stats = computeAggregateStats([
+      makeSession({ correct: 3, total: 5 }),
+      makeSession({
+        timestamp: "2025-01-02T00:00:00Z",
+        correct: 7,
+        total: 10,
+      }),
+    ]);
+    assert.equal(stats.sessionCount, 2);
+    assert.equal(stats.totalAnswered, 15);
+    assert.equal(stats.totalCorrect, 10);
+    assert.equal(stats.overallPercentage, 67);
+  });
+
+  it("byType sums breakdownByType across sessions", () => {
+    const stats = computeAggregateStats([
+      makeSession({
+        breakdownByType: {
+          "multiple-choice": { correct: 2, total: 3, percentage: 67 },
+        },
+      }),
+      makeSession({
+        timestamp: "2025-01-02T00:00:00Z",
+        breakdownByType: {
+          "multiple-choice": { correct: 4, total: 5, percentage: 80 },
+          "numeric-input": { correct: 1, total: 2, percentage: 50 },
+        },
+      }),
+    ]);
+    assert.deepEqual(stats.byType["multiple-choice"], {
+      correct: 6,
+      total: 8,
+      percentage: 75,
+    });
+    assert.deepEqual(stats.byType["numeric-input"], {
+      correct: 1,
+      total: 2,
+      percentage: 50,
+    });
+  });
+
+  it("byTag sums breakdownByTag, handles overlapping tags correctly", () => {
+    const stats = computeAggregateStats([
+      makeSession({
+        breakdownByTag: {
+          caching: { correct: 1, total: 2, percentage: 50 },
+          consistency: { correct: 1, total: 1, percentage: 100 },
+        },
+      }),
+      makeSession({
+        timestamp: "2025-01-02T00:00:00Z",
+        breakdownByTag: {
+          caching: { correct: 2, total: 3, percentage: 67 },
+        },
+      }),
+    ]);
+    assert.deepEqual(stats.byTag.caching, {
+      correct: 3,
+      total: 5,
+      percentage: 60,
+    });
+    assert.deepEqual(stats.byTag.consistency, {
+      correct: 1,
+      total: 1,
+      percentage: 100,
+    });
+  });
+
+  it("byUnit groups by context.unitTitle", () => {
+    const stats = computeAggregateStats([
+      makeSession({
+        correct: 3,
+        total: 5,
+        context: { unitTitle: "Estimation" },
+      }),
+      makeSession({
+        timestamp: "2025-01-02T00:00:00Z",
+        correct: 4,
+        total: 5,
+        context: { unitTitle: "Estimation" },
+      }),
+    ]);
+    assert.deepEqual(stats.byUnit.Estimation, {
+      correct: 7,
+      total: 10,
+      percentage: 70,
+    });
+  });
+
+  it("byChapter groups by context.chapterTitle", () => {
+    const stats = computeAggregateStats([
+      makeSession({
+        correct: 2,
+        total: 4,
+        context: { chapterTitle: "Fundamentals" },
+      }),
+    ]);
+    assert.deepEqual(stats.byChapter.Fundamentals, {
+      correct: 2,
+      total: 4,
+      percentage: 50,
+    });
+  });
+
+  it("trend — entries sorted by timestamp ascending", () => {
+    const stats = computeAggregateStats([
+      makeSession({ timestamp: "2025-01-03T00:00:00Z", correct: 1, total: 2 }),
+      makeSession({ timestamp: "2025-01-01T00:00:00Z", correct: 3, total: 5 }),
+      makeSession({ timestamp: "2025-01-02T00:00:00Z", correct: 4, total: 5 }),
+    ]);
+    assert.equal(stats.trend.length, 3);
+    assert.equal(stats.trend[0].timestamp, "2025-01-01T00:00:00Z");
+    assert.equal(stats.trend[1].timestamp, "2025-01-02T00:00:00Z");
+    assert.equal(stats.trend[2].timestamp, "2025-01-03T00:00:00Z");
+  });
+
+  it("mostMissed — sorted by wrongCount desc, top 10 limit", () => {
+    // Create 12 problems, each wrong different numbers of times
+    const results = [];
+    for (let i = 0; i < 12; i++) {
+      for (let j = 0; j <= i; j++) {
+        results.push({
+          id: `p${i}`,
+          question: `Problem ${i}`,
+          correct: false,
+        });
+      }
+      // Also add a "seen" result that was correct
+      results.push({ id: `p${i}`, question: `Problem ${i}`, correct: true });
+    }
+    const stats = computeAggregateStats([
+      makeSession({ correct: 12, total: 90, results }),
+    ]);
+    assert.equal(stats.mostMissed.length, 10);
+    // Most wrong should be p11 (12 wrongs)
+    assert.equal(stats.mostMissed[0].id, "p11");
+    assert.equal(stats.mostMissed[0].wrongCount, 12);
+  });
+
+  it("sessions without context — byUnit/byChapter skip them, no crash", () => {
+    const stats = computeAggregateStats([
+      makeSession({ correct: 3, total: 5 }),
+    ]);
+    assert.deepEqual(stats.byUnit, {});
+    assert.deepEqual(stats.byChapter, {});
+    assert.equal(stats.totalAnswered, 5);
+  });
+
+  it("sessions without breakdowns — byType/byTag skip them, no crash", () => {
+    const stats = computeAggregateStats([
+      makeSession({ correct: 3, total: 5 }),
+    ]);
+    assert.deepEqual(stats.byType, {});
+    assert.deepEqual(stats.byTag, {});
+  });
+
+  it("skipped results excluded from mostMissed counts", () => {
+    const stats = computeAggregateStats([
+      makeSession({
+        correct: 0,
+        total: 1,
+        results: [
+          { id: "s1", question: "Q1", skipped: true, correct: false },
+          { id: "m1", question: "Q2", correct: false },
+        ],
+      }),
+    ]);
+    // Only m1 should appear in mostMissed, s1 was skipped
+    assert.equal(stats.mostMissed.length, 1);
+    assert.equal(stats.mostMissed[0].id, "m1");
+  });
+});
+
+// =============================================
 // index.html UI wiring contracts
 // =============================================
 //
@@ -1398,6 +1735,18 @@ describe("index.html UI wiring contracts", () => {
       "renderBreakdownSection",
       "renderTypeBreakdown",
       "renderTagBreakdown",
+      // v2.8 — Dashboard & history
+      "renderDashboard",
+      "showDashboard",
+      "hideDashboard",
+      "loadHistoryFromPaste",
+      "saveToLocalStorage",
+      "loadFromLocalStorage",
+      "clearHistory",
+      "exportAllHistory",
+      "renderHistorySummary",
+      "renderTrendSection",
+      "renderMostMissed",
     ];
 
     for (const name of requiredFunctions) {
@@ -1435,6 +1784,27 @@ describe("index.html UI wiring contracts", () => {
         assert.ok(
           pattern.test(script),
           `missing quiz.on("${event}") — engine event will be ignored`,
+        );
+      });
+    }
+  });
+
+  // -----------------------------------------
+  // Engine imports
+  // -----------------------------------------
+
+  describe("engine imports", () => {
+    const requiredImports = [
+      "validateSessionSummary",
+      "deduplicateSessions",
+      "computeAggregateStats",
+    ];
+
+    for (const name of requiredImports) {
+      it(`imports ${name} from openquizzer.js`, () => {
+        assert.ok(
+          script.includes(name),
+          `missing import of ${name} — aggregate features will not work`,
         );
       });
     }
@@ -1492,6 +1862,28 @@ describe("index.html UI wiring contracts", () => {
         "missing skipBtn click listener — skip button will not work",
       );
     });
+
+    // v2.8 — Dashboard & history event bindings
+    const v28Bindings = [
+      ["dashboardBtn", "click", "dashboard button"],
+      ["loadHistoryBtn", "click", "import history button"],
+      ["importSubmitBtn", "click", "import submit button"],
+      ["importCancelBtn", "click", "import cancel button"],
+      ["dashboardBackBtn", "click", "dashboard back button"],
+      ["exportAllBtn", "click", "export all button"],
+      ["clearHistoryBtn", "click", "clear history button"],
+      ["resultsDashboardBtn", "click", "results dashboard button"],
+    ];
+
+    for (const [element, event, label] of v28Bindings) {
+      it(`binds ${element} ${event}`, () => {
+        assert.ok(
+          script.includes(`${element}.addEventListener("${event}"`) ||
+            script.includes(`${element}.addEventListener('${event}'`),
+          `missing ${element} ${event} listener — ${label} will not work`,
+        );
+      });
+    }
   });
 
   // -----------------------------------------
@@ -1507,6 +1899,17 @@ describe("index.html UI wiring contracts", () => {
       "ordering-submit",
       "skip-btn",
       "results-breakdown",
+      // v2.8 — Dashboard & history
+      "dashboard",
+      "dashboard-btn",
+      "load-history-btn",
+      "import-textarea",
+      "import-submit-btn",
+      "export-all-btn",
+      "clear-history-btn",
+      "results-dashboard-btn",
+      "dashboard-back-btn",
+      "history-section",
     ];
 
     for (const id of requiredIds) {

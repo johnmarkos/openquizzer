@@ -115,6 +115,162 @@ function formatNumber(num) {
   return num.toString();
 }
 
+// =============================================
+// Exported standalone utilities (not on the class)
+// =============================================
+
+export function validateSessionSummary(obj) {
+  const errors = [];
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    return { valid: false, errors: ["Input must be a plain object"] };
+  }
+  if (!obj.timestamp || isNaN(Date.parse(obj.timestamp))) {
+    errors.push("Missing or invalid timestamp");
+  }
+  if (
+    !obj.score ||
+    typeof obj.score.correct !== "number" ||
+    typeof obj.score.total !== "number"
+  ) {
+    errors.push("Missing or invalid score (needs correct and total)");
+  }
+  if (!Array.isArray(obj.results)) {
+    errors.push("Missing results array");
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+export function deduplicateSessions(sessions) {
+  const seen = new Set();
+  return sessions.filter((s) => {
+    if (seen.has(s.timestamp)) return false;
+    seen.add(s.timestamp);
+    return true;
+  });
+}
+
+export function computeAggregateStats(sessions) {
+  let totalAnswered = 0;
+  let totalCorrect = 0;
+  let totalSkipped = 0;
+
+  const byType = {};
+  const byTag = {};
+  const byUnit = {};
+  const byChapter = {};
+  const problemStats = {};
+
+  for (const session of sessions) {
+    totalAnswered += session.score.total;
+    totalCorrect += session.score.correct;
+    totalSkipped += session.score.skipped || 0;
+
+    // byType from breakdownByType
+    if (session.breakdownByType) {
+      for (const [type, stats] of Object.entries(session.breakdownByType)) {
+        if (!byType[type]) byType[type] = { correct: 0, total: 0 };
+        byType[type].correct += stats.correct;
+        byType[type].total += stats.total;
+      }
+    }
+
+    // byTag from breakdownByTag
+    if (session.breakdownByTag) {
+      for (const [tag, stats] of Object.entries(session.breakdownByTag)) {
+        if (!byTag[tag]) byTag[tag] = { correct: 0, total: 0 };
+        byTag[tag].correct += stats.correct;
+        byTag[tag].total += stats.total;
+      }
+    }
+
+    // byUnit / byChapter from context
+    if (session.context) {
+      if (session.context.unitTitle) {
+        const key = session.context.unitTitle;
+        if (!byUnit[key]) byUnit[key] = { correct: 0, total: 0 };
+        byUnit[key].correct += session.score.correct;
+        byUnit[key].total += session.score.total;
+      }
+      if (session.context.chapterTitle) {
+        const key = session.context.chapterTitle;
+        if (!byChapter[key]) byChapter[key] = { correct: 0, total: 0 };
+        byChapter[key].correct += session.score.correct;
+        byChapter[key].total += session.score.total;
+      }
+    }
+
+    // mostMissed: track per-problem stats
+    if (Array.isArray(session.results)) {
+      for (const result of session.results) {
+        if (result.skipped) continue;
+        if (!problemStats[result.id]) {
+          problemStats[result.id] = {
+            id: result.id,
+            question: result.question || "",
+            wrongCount: 0,
+            seenCount: 0,
+          };
+        }
+        problemStats[result.id].seenCount++;
+        if (!result.correct) {
+          problemStats[result.id].wrongCount++;
+        }
+      }
+    }
+  }
+
+  // Compute percentages for breakdown objects
+  const addPercentages = (obj) => {
+    for (const entry of Object.values(obj)) {
+      entry.percentage =
+        entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0;
+    }
+  };
+  addPercentages(byType);
+  addPercentages(byTag);
+  addPercentages(byUnit);
+  addPercentages(byChapter);
+
+  // trend: one entry per session sorted by timestamp asc
+  const trend = sessions
+    .map((s) => ({
+      timestamp: s.timestamp,
+      percentage: s.score.percentage,
+      correct: s.score.correct,
+      total: s.score.total,
+    }))
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+  // mostMissed: top 10 by wrongCount desc
+  const mostMissed = Object.values(problemStats)
+    .filter((p) => p.wrongCount > 0)
+    .sort((a, b) => b.wrongCount - a.wrongCount)
+    .slice(0, 10)
+    .map((p) => ({
+      id: p.id,
+      question: p.question,
+      wrongCount: p.wrongCount,
+      seenCount: p.seenCount,
+      percentage:
+        p.seenCount > 0 ? Math.round((p.wrongCount / p.seenCount) * 100) : 0,
+    }));
+
+  return {
+    sessionCount: sessions.length,
+    totalAnswered,
+    totalCorrect,
+    overallPercentage:
+      totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0,
+    totalSkipped,
+    byType,
+    byTag,
+    byUnit,
+    byChapter,
+    trend,
+    mostMissed,
+  };
+}
+
 export class OpenQuizzer {
   // State machine: idle → practicing → answered → complete
   #state = "idle";

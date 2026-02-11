@@ -753,6 +753,106 @@
         font-weight: 600;
         margin-right: 0.5rem;
       }
+
+      /* History section on landing */
+      .history-section {
+        margin-top: 1.5rem;
+        padding: 0.875rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+
+      .history-header {
+        margin-bottom: 0.5rem;
+      }
+
+      .history-summary-text {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      .history-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      /* Import area */
+      .import-area {
+        margin-top: 0.75rem;
+      }
+
+      .import-textarea {
+        width: 100%;
+        padding: 0.75rem;
+        background: var(--bg-secondary);
+        border: 2px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-family: inherit;
+        font-size: 0.8rem;
+        resize: vertical;
+        min-height: 100px;
+      }
+
+      .import-textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .import-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+      }
+
+      .import-status {
+        min-height: 1.25rem;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+
+      /* Dashboard view */
+      .dashboard {
+        display: none;
+        padding: 1rem 0;
+      }
+
+      .dashboard.active {
+        display: block;
+      }
+
+      .dashboard h2 {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+      }
+
+      .dashboard-overview {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+        padding: 0.875rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+
+      .dashboard-section {
+        margin-bottom: 1.25rem;
+        padding: 0.875rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+
+      .dashboard-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+      }
     </style>
   </head>
 
@@ -768,6 +868,34 @@
         <div id="error-msg" class="error-msg"></div>
 
         <div id="unit-list"></div>
+        <div id="history-section" class="history-section hidden-container">
+          <div class="history-header">
+            <span id="history-summary-text" class="history-summary-text"></span>
+          </div>
+          <div class="history-actions">
+            <button class="nav-btn secondary" id="dashboard-btn">
+              View Dashboard
+            </button>
+            <button class="nav-btn secondary" id="load-history-btn">
+              Import History
+            </button>
+          </div>
+        </div>
+        <div id="import-area" class="import-area hidden-container">
+          <textarea
+            id="import-textarea"
+            class="import-textarea"
+            placeholder="Paste session JSON here (single object or array)..."
+            rows="6"
+          ></textarea>
+          <div class="import-actions">
+            <button class="nav-btn" id="import-submit-btn">Import</button>
+            <button class="nav-btn secondary" id="import-cancel-btn">
+              Cancel
+            </button>
+          </div>
+          <div id="import-status" class="import-status"></div>
+        </div>
       </div>
 
       <!-- Practice View -->
@@ -898,13 +1026,58 @@
         </div>
         <div class="nav-row results-nav">
           <button class="nav-btn secondary" id="retry-btn">Try Again</button>
+          <button class="nav-btn secondary hidden" id="results-dashboard-btn">
+            View Dashboard
+          </button>
           <button class="nav-btn" id="back-btn">Back to Menu</button>
         </div>
+      </div>
+      <!-- Dashboard View -->
+      <div id="dashboard" class="dashboard">
+        <button class="quit-link" id="dashboard-back-btn">
+          &larr; Back to Menu
+        </button>
+        <h2>Progress Dashboard</h2>
+        <div id="dashboard-overview" class="dashboard-overview"></div>
+        <div
+          id="dashboard-trend"
+          class="dashboard-section hidden-container"
+        ></div>
+        <div
+          id="dashboard-by-type"
+          class="dashboard-section hidden-container"
+        ></div>
+        <div
+          id="dashboard-by-tag"
+          class="dashboard-section hidden-container"
+        ></div>
+        <div
+          id="dashboard-by-unit"
+          class="dashboard-section hidden-container"
+        ></div>
+        <div
+          id="dashboard-most-missed"
+          class="dashboard-section hidden-container"
+        ></div>
+        <div class="dashboard-actions">
+          <button class="nav-btn secondary" id="export-all-btn">
+            Export All History
+          </button>
+          <button class="nav-btn secondary" id="clear-history-btn">
+            Clear History
+          </button>
+        </div>
+        <div id="dashboard-export-status" class="results-export-status"></div>
       </div>
     </div>
 
     <script type="module">
-      import { OpenQuizzer } from "./openquizzer.js";
+      import {
+        OpenQuizzer,
+        validateSessionSummary,
+        deduplicateSessions,
+        computeAggregateStats,
+      } from "./openquizzer.js";
       import { CONFIG } from "./config.js";
 
       const quiz = new OpenQuizzer();
@@ -993,8 +1166,42 @@
       const stageContext = document.getElementById("stage-context");
       const stageContextText = document.getElementById("stage-context-text");
 
+      // Dashboard view elements
+      const dashboardEl = document.getElementById("dashboard");
+      const dashboardOverview = document.getElementById("dashboard-overview");
+      const dashboardTrend = document.getElementById("dashboard-trend");
+      const dashboardByType = document.getElementById("dashboard-by-type");
+      const dashboardByTag = document.getElementById("dashboard-by-tag");
+      const dashboardByUnit = document.getElementById("dashboard-by-unit");
+      const dashboardMostMissed = document.getElementById(
+        "dashboard-most-missed",
+      );
+      const dashboardBackBtn = document.getElementById("dashboard-back-btn");
+      const exportAllBtn = document.getElementById("export-all-btn");
+      const clearHistoryBtn = document.getElementById("clear-history-btn");
+      const dashboardExportStatus = document.getElementById(
+        "dashboard-export-status",
+      );
+      const resultsDashboardBtn = document.getElementById(
+        "results-dashboard-btn",
+      );
+
+      // History section elements
+      const historySection = document.getElementById("history-section");
+      const historySummaryText = document.getElementById(
+        "history-summary-text",
+      );
+      const dashboardBtn = document.getElementById("dashboard-btn");
+      const loadHistoryBtn = document.getElementById("load-history-btn");
+      const importArea = document.getElementById("import-area");
+      const importTextarea = document.getElementById("import-textarea");
+      const importSubmitBtn = document.getElementById("import-submit-btn");
+      const importCancelBtn = document.getElementById("import-cancel-btn");
+      const importStatus = document.getElementById("import-status");
+
       let selectedOrderingIndex = -1; // -1 means nothing selected
       let latestSessionSummary = null;
+      let sessionHistory = [];
 
       // =============================================
       // UI helpers
@@ -1183,9 +1390,12 @@
       function backToMenu() {
         practice.classList.remove("active");
         results.classList.remove("active");
+        dashboardEl.classList.remove("active");
         landing.classList.remove("hidden");
 
         quiz.reset();
+        resultsDashboardBtn.classList.add("hidden");
+        importArea.classList.add("hidden-container");
 
         document
           .querySelectorAll(".chapter-btn[data-original-text]")
@@ -1195,6 +1405,7 @@
             btn.classList.remove("loading");
           });
 
+        renderHistorySummary();
         window.scrollTo(0, 0);
       }
 
@@ -1561,6 +1772,291 @@
       }
 
       // =============================================
+      // localStorage integration
+      // =============================================
+
+      function loadFromLocalStorage() {
+        try {
+          const key = CONFIG.storageKey || "openquizzer-sessions";
+          const raw = localStorage.getItem(key);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return [];
+          return parsed.filter((s) => validateSessionSummary(s).valid);
+        } catch {
+          return [];
+        }
+      }
+
+      function saveToLocalStorage() {
+        try {
+          const key = CONFIG.storageKey || "openquizzer-sessions";
+          localStorage.setItem(key, JSON.stringify(sessionHistory));
+        } catch {
+          /* quota exceeded or disabled — silent fail */
+        }
+      }
+
+      function clearLocalStorage() {
+        try {
+          const key = CONFIG.storageKey || "openquizzer-sessions";
+          localStorage.removeItem(key);
+        } catch {
+          /* silent */
+        }
+      }
+
+      // =============================================
+      // History section rendering
+      // =============================================
+
+      function renderHistorySummary() {
+        if (sessionHistory.length === 0) {
+          historySection.classList.add("hidden-container");
+          return;
+        }
+        const stats = computeAggregateStats(sessionHistory);
+        historySummaryText.textContent = `${stats.sessionCount} session${stats.sessionCount !== 1 ? "s" : ""} \u00b7 ${stats.totalAnswered} question${stats.totalAnswered !== 1 ? "s" : ""} \u00b7 ${stats.overallPercentage}% overall`;
+        historySection.classList.remove("hidden-container");
+      }
+
+      // =============================================
+      // Paste import flow
+      // =============================================
+
+      function loadHistoryFromPaste(jsonString) {
+        let parsed;
+        try {
+          parsed = JSON.parse(jsonString);
+        } catch {
+          return { imported: 0, errors: ["Invalid JSON — could not parse."] };
+        }
+
+        const items = Array.isArray(parsed) ? parsed : [parsed];
+        const validItems = [];
+        const errors = [];
+
+        items.forEach((item, i) => {
+          const result = validateSessionSummary(item);
+          if (result.valid) {
+            validItems.push(item);
+          } else {
+            errors.push(`Item ${i + 1}: ${result.errors.join(", ")}`);
+          }
+        });
+
+        const before = sessionHistory.length;
+        sessionHistory = deduplicateSessions([
+          ...sessionHistory,
+          ...validItems,
+        ]);
+        const newCount = sessionHistory.length - before;
+        saveToLocalStorage();
+        renderHistorySummary();
+
+        return { imported: newCount, errors };
+      }
+
+      // =============================================
+      // Dashboard view
+      // =============================================
+
+      function renderTrendSection(trend, sessions) {
+        if (trend.length === 0) {
+          dashboardTrend.classList.add("hidden-container");
+          return;
+        }
+        dashboardTrend.classList.remove("hidden-container");
+        dashboardTrend.innerHTML = "";
+
+        const heading = document.createElement("div");
+        heading.className = "breakdown-heading";
+        heading.textContent = "Recent sessions";
+        dashboardTrend.appendChild(heading);
+
+        // Build a map from timestamp to session context for labels
+        const contextMap = new Map();
+        for (const session of sessions) {
+          if (session.context) {
+            contextMap.set(session.timestamp, session.context);
+          }
+        }
+
+        // Show last 10, most recent first
+        const recent = trend.slice(-10).reverse();
+        for (const entry of recent) {
+          const row = document.createElement("div");
+          row.className = "breakdown-row";
+
+          const label = document.createElement("span");
+          label.className = "breakdown-label";
+          const date = new Date(entry.timestamp);
+          const dateStr = date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+          const ctx = contextMap.get(entry.timestamp);
+          const contextLabel =
+            ctx && ctx.chapterTitle
+              ? ctx.chapterTitle
+              : ctx && ctx.unitTitle
+                ? ctx.unitTitle
+                : "";
+          label.textContent = contextLabel
+            ? `${dateStr}  ${contextLabel}`
+            : dateStr;
+
+          const stats = document.createElement("span");
+          stats.className = "breakdown-stats";
+          stats.textContent = `${entry.percentage}%  (${entry.correct}/${entry.total})`;
+
+          row.appendChild(label);
+          row.appendChild(stats);
+          dashboardTrend.appendChild(row);
+        }
+      }
+
+      function renderMostMissed(mostMissed) {
+        if (mostMissed.length === 0) {
+          dashboardMostMissed.classList.add("hidden-container");
+          return;
+        }
+        dashboardMostMissed.classList.remove("hidden-container");
+        dashboardMostMissed.innerHTML = "";
+
+        const heading = document.createElement("div");
+        heading.className = "breakdown-heading";
+        heading.textContent = "Most missed";
+        dashboardMostMissed.appendChild(heading);
+
+        for (const item of mostMissed) {
+          const row = document.createElement("div");
+          row.className = "breakdown-row";
+
+          const label = document.createElement("span");
+          label.className = "breakdown-label";
+          const questionText =
+            item.question.length > 60
+              ? item.question.slice(0, 57) + "..."
+              : item.question;
+          label.textContent = `${item.id}: ${questionText}`;
+
+          const stats = document.createElement("span");
+          stats.className = "breakdown-stats";
+          stats.textContent = `wrong ${item.wrongCount}/${item.seenCount}`;
+
+          row.appendChild(label);
+          row.appendChild(stats);
+          dashboardMostMissed.appendChild(row);
+        }
+      }
+
+      function renderDashboard() {
+        const stats = computeAggregateStats(sessionHistory);
+
+        // Overview
+        let overviewText = `${stats.sessionCount} session${stats.sessionCount !== 1 ? "s" : ""} \u00b7 ${stats.totalAnswered} question${stats.totalAnswered !== 1 ? "s" : ""} \u00b7 ${stats.overallPercentage}% overall`;
+        if (stats.totalSkipped > 0) {
+          overviewText += ` \u00b7 ${stats.totalSkipped} skipped`;
+        }
+        dashboardOverview.textContent = overviewText;
+
+        // Trend
+        renderTrendSection(stats.trend, sessionHistory);
+
+        // By type
+        if (Object.keys(stats.byType).length > 0) {
+          dashboardByType.classList.remove("hidden-container");
+          renderBreakdownSection(
+            dashboardByType,
+            "By question type",
+            stats.byType,
+          );
+        } else {
+          dashboardByType.classList.add("hidden-container");
+        }
+
+        // By tag
+        if (Object.keys(stats.byTag).length > 0) {
+          dashboardByTag.classList.remove("hidden-container");
+          renderBreakdownSection(dashboardByTag, "By topic", stats.byTag);
+        } else {
+          dashboardByTag.classList.add("hidden-container");
+        }
+
+        // By unit
+        if (Object.keys(stats.byUnit).length > 0) {
+          dashboardByUnit.classList.remove("hidden-container");
+          renderBreakdownSection(dashboardByUnit, "By unit", stats.byUnit);
+        } else {
+          dashboardByUnit.classList.add("hidden-container");
+        }
+
+        // Most missed
+        renderMostMissed(stats.mostMissed);
+
+        dashboardExportStatus.textContent = "";
+      }
+
+      function showDashboard() {
+        landing.classList.add("hidden");
+        results.classList.remove("active");
+        practice.classList.remove("active");
+        dashboardEl.classList.add("active");
+        renderDashboard();
+        window.scrollTo(0, 0);
+      }
+
+      function hideDashboard() {
+        dashboardEl.classList.remove("active");
+        landing.classList.remove("hidden");
+        renderHistorySummary();
+        window.scrollTo(0, 0);
+      }
+
+      async function exportAllHistory() {
+        if (sessionHistory.length === 0) {
+          dashboardExportStatus.textContent = "No history to export.";
+          return;
+        }
+
+        const jsonText = JSON.stringify(sessionHistory, null, 2);
+
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(jsonText);
+            dashboardExportStatus.textContent = `Copied ${sessionHistory.length} session${sessionHistory.length !== 1 ? "s" : ""} to clipboard.`;
+            return;
+          }
+        } catch {
+          // Fall through to execCommand fallback.
+        }
+
+        const tempTextArea = document.createElement("textarea");
+        tempTextArea.value = jsonText;
+        tempTextArea.setAttribute("readonly", "true");
+        tempTextArea.style.position = "absolute";
+        tempTextArea.style.left = "-9999px";
+        document.body.appendChild(tempTextArea);
+        tempTextArea.select();
+
+        const didCopy = document.execCommand("copy");
+        document.body.removeChild(tempTextArea);
+        dashboardExportStatus.textContent = didCopy
+          ? `Copied ${sessionHistory.length} session${sessionHistory.length !== 1 ? "s" : ""} to clipboard.`
+          : "Could not copy automatically.";
+      }
+
+      function clearHistory() {
+        if (!confirm("Clear all session history? This cannot be undone.")) {
+          return;
+        }
+        sessionHistory = [];
+        clearLocalStorage();
+        hideDashboard();
+      }
+
+      // =============================================
       // Engine event listeners
       // =============================================
 
@@ -1744,12 +2240,23 @@
 
       quiz.on("complete", ({ total, sessionSummary }) => {
         skipBtn.classList.add("hidden");
+        const summary = sessionSummary || quiz.getSessionSummary();
         showResultsView({
-          summary: sessionSummary || quiz.getSessionSummary(),
+          summary,
           isPartial: false,
           answeredCount: total,
           totalProblems: total,
         });
+
+        // Auto-save to localStorage
+        sessionHistory.push(summary);
+        saveToLocalStorage();
+        setResultsExportStatus("Session saved.");
+
+        // Show dashboard button on results if history exists
+        if (sessionHistory.length > 0) {
+          resultsDashboardBtn.classList.remove("hidden");
+        }
       });
 
       quiz.on("skip", () => {
@@ -1924,6 +2431,51 @@
         });
       });
 
+      // Dashboard & history event bindings
+      dashboardBtn.addEventListener("click", () => {
+        showDashboard();
+      });
+
+      loadHistoryBtn.addEventListener("click", () => {
+        importArea.classList.remove("hidden-container");
+        historySection.classList.add("hidden-container");
+        importTextarea.value = "";
+        importStatus.textContent = "";
+        importTextarea.focus();
+      });
+
+      importSubmitBtn.addEventListener("click", () => {
+        const result = loadHistoryFromPaste(importTextarea.value);
+        if (result.errors.length > 0 && result.imported === 0) {
+          importStatus.textContent = `No sessions imported. ${result.errors[0]}`;
+        } else if (result.errors.length > 0) {
+          importStatus.textContent = `Imported ${result.imported} session${result.imported !== 1 ? "s" : ""} (${result.errors.length} invalid).`;
+        } else {
+          importStatus.textContent = `Imported ${result.imported} session${result.imported !== 1 ? "s" : ""}.`;
+        }
+      });
+
+      importCancelBtn.addEventListener("click", () => {
+        importArea.classList.add("hidden-container");
+        renderHistorySummary();
+      });
+
+      dashboardBackBtn.addEventListener("click", () => {
+        hideDashboard();
+      });
+
+      exportAllBtn.addEventListener("click", () => {
+        exportAllHistory();
+      });
+
+      clearHistoryBtn.addEventListener("click", () => {
+        clearHistory();
+      });
+
+      resultsDashboardBtn.addEventListener("click", () => {
+        showDashboard();
+      });
+
       // =============================================
       // Initialize
       // =============================================
@@ -1944,6 +2496,8 @@
       }
 
       renderUnitList();
+      sessionHistory = loadFromLocalStorage();
+      renderHistorySummary();
     </script>
   </body>
 </html>
