@@ -40,7 +40,7 @@ Content lives in `content/` as JSON files. The `units` array in `config.js` defi
 
 ## Canonical Source
 
-**This repo is canonical** for the engine (`openquizzer.js`, `openquizzer.test.js`) and generic UI (`index.html`). Instances (like System Design Practice) upgrade by copying these three files — `config.js` and `content/` are untouched.
+**This repo is canonical** for the engine (`openquizzer.js`, `openquizzer.test.js`) and generic UI (`index.html`). Instances (like System Design Practice) upgrade by copying these three files, then updating the static `<title>` and `<meta description>` in `index.html` to match their `config.js`. All three files are otherwise copy-verbatim — no other edits needed.
 
 Instances created from this template are independent — they don't auto-update. This is acceptable for a single-file engine.
 

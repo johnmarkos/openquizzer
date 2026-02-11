@@ -6,6 +6,7 @@ import {
   deduplicateSessions,
   computeAggregateStats,
 } from "./openquizzer.js";
+import { CONFIG } from "./config.js";
 
 // =============================================
 // Test fixtures
@@ -1945,26 +1946,27 @@ describe("index.html UI wiring contracts", () => {
   });
 
   // -----------------------------------------
-  // Template placeholder integrity
+  // Static meta tags match CONFIG
   // -----------------------------------------
   //
-  // The static <title> and <meta description> are placeholders that
-  // instances override. These tests ensure the template repo keeps its
-  // generic values — instance-specific values should never be committed
-  // here. Instances should customize these tests (see AGENTS.md).
+  // The static <title> and <meta description> must match CONFIG values
+  // so link preview crawlers (which don't run JS) show the correct info.
+  // In the template repo, CONFIG has the generic defaults; in instances,
+  // CONFIG has instance-specific values. Either way, the static HTML
+  // must agree with CONFIG.
 
-  describe("template placeholder integrity", () => {
-    it("static <title> is the template default", () => {
+  describe("static meta tags match CONFIG", () => {
+    it("static <title> matches CONFIG.title", () => {
       assert.ok(
-        html.includes("<title>OpenQuizzer</title>"),
-        "static <title> was changed from template default — instances customize this, not the template",
+        html.includes(`<title>${CONFIG.title}</title>`),
+        `static <title> does not match CONFIG.title ("${CONFIG.title}") — update the <title> tag in index.html`,
       );
     });
 
-    it("static meta description is the template default", () => {
+    it("static meta description matches CONFIG.description", () => {
       assert.ok(
-        html.includes('content="An OpenQuizzer instance"'),
-        "static meta description was changed from template default — instances customize this, not the template",
+        html.includes(`content="${CONFIG.description}"`),
+        `static meta description does not match CONFIG.description — update the <meta description> tag in index.html`,
       );
     });
   });

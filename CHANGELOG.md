@@ -1,5 +1,11 @@
 # Changelog
 
+## Simplify instance upgrade path (2026-02-10)
+
+- Made `openquizzer.test.js` **copy-verbatim** for instances — meta tag tests now import CONFIG and check dynamically instead of hardcoding template placeholder values. Instances no longer need to swap tests after copying.
+- Updated template `index.html` meta description to match `config.js` (was a stale placeholder).
+- Instance upgrade is now: copy 3 files, edit 2 lines in `index.html` (`<title>` and `<meta description>`). No test edits needed.
+
 ## v2.8: Session History & Aggregate Dashboard
 
 - Added **session history with localStorage** — auto-save session summaries on complete, auto-load on startup; configurable `CONFIG.storageKey` for per-instance isolation
