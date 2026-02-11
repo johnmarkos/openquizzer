@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.8: Session History & Aggregate Dashboard
+
+- Added **session history with localStorage** — auto-save session summaries on complete, auto-load on startup; configurable `CONFIG.storageKey` for per-instance isolation
+- Added **paste-back import** — "Import History" UI accepts pasted JSON (single object or array), validates structure, deduplicates by timestamp
+- Added **aggregate stats engine** — exported `computeAggregateStats()` computes cumulative accuracy by question type, tag, unit, and chapter; trend over time; most-missed problem IDs (top 10 by wrong count)
+- Added **Progress Dashboard** view — overview stats, recent sessions trend (last 10), breakdowns by type/tag/unit, most-missed problems; accessible from landing page and results page
+- Added **combined export** — "Export All History" copies full session array to clipboard
+- Added **clear data** — "Clear History" with confirmation dialog; removes localStorage data
+- Added exported utilities: `validateSessionSummary()`, `deduplicateSessions()`, `computeAggregateStats()`
+- Added 54 new tests (validation, deduplication, aggregate stats, UI wiring) — 174 total, all passing
+
 ## v2.7: Single-Session Feedback
 
 - Added **skip button** — skip a problem without penalty; skipped count tracked separately from wrong answers and shown on results page
