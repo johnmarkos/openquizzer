@@ -291,6 +291,7 @@
       }
 
       .detail-toggle {
+        display: inline-block;
         background: none;
         border: none;
         color: var(--accent);
@@ -1562,6 +1563,7 @@
         feedbackDetail.innerHTML = "";
         feedbackDetailToggle.classList.add("hidden-container");
         feedbackDetailToggle.textContent = "Learn more";
+        feedbackDetailToggle.onclick = null;
 
         if (detailedExplanation) {
           feedbackDetailToggle.classList.remove("hidden-container");
