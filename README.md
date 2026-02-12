@@ -73,9 +73,12 @@ The filename must match the pattern `unit-{unitId}-chapter-{chapterNum}.json`.
   "question": "What is the capital of France?",
   "options": ["London", "Paris", "Berlin", "Madrid"],
   "correct": 1,
-  "explanation": "Paris has been the capital of France since the 10th century."
+  "explanation": "Paris has been the capital of France since the 10th century.",
+  "detailedExplanation": "<p>Optional rich HTML shown behind a <strong>Learn more</strong> toggle.</p>"
 }
 ```
+
+All question types support the optional `detailedExplanation` field. When present, a "Learn more" toggle appears below the short explanation, expanding into the detailed content. HTML is supported. When absent, the UI behaves as before.
 
 **Numeric input** (supports K/M/B/T suffixes from users):
 

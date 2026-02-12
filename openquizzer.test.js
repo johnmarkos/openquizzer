@@ -12,8 +12,8 @@ import { CONFIG } from "./config.js";
 // Test fixtures
 // =============================================
 
-function mcProblem(id, correct = 1) {
-  return {
+function mcProblem(id, correct = 1, { detailedExplanation } = {}) {
+  const problem = {
     id,
     type: "multiple-choice",
     question: `MC ${id}`,
@@ -21,6 +21,9 @@ function mcProblem(id, correct = 1) {
     correct,
     explanation: `Explanation for ${id}`,
   };
+  if (detailedExplanation !== undefined)
+    problem.detailedExplanation = detailedExplanation;
+  return problem;
 }
 
 function numericProblem(
@@ -590,6 +593,79 @@ describe("two-stage", () => {
     quiz.selectOption(0);
 
     assert.equal(advances[0].nextStage.previousAnswer, "X");
+  });
+});
+
+// =============================================
+// detailedExplanation
+// =============================================
+
+describe("detailedExplanation", () => {
+  it("included in optionSelected event when present", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([
+      mcProblem("m1", 0, { detailedExplanation: "<p>Details here</p>" }),
+    ]);
+    quiz.start();
+    const events = collectEvents(quiz, "optionSelected");
+    quiz.selectOption(0);
+    assert.equal(events[0].detailedExplanation, "<p>Details here</p>");
+  });
+
+  it("undefined in optionSelected event when absent", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0)]);
+    quiz.start();
+    const events = collectEvents(quiz, "optionSelected");
+    quiz.selectOption(0);
+    assert.equal(events[0].detailedExplanation, undefined);
+  });
+
+  it("included in numericResult event when present", () => {
+    const quiz = new OpenQuizzer();
+    const problem = numericProblem("n1", { answer: 100, tolerance: "exact" });
+    problem.detailedExplanation = "<p>Numeric details</p>";
+    quiz.loadProblems([problem]);
+    quiz.start();
+    const events = collectEvents(quiz, "numericResult");
+    quiz.submitNumeric("100");
+    assert.equal(events[0].detailedExplanation, "<p>Numeric details</p>");
+  });
+
+  it("included in multiSelectResult event when present", () => {
+    const quiz = new OpenQuizzer();
+    const problem = multiSelectProblem("ms1", [0, 2]);
+    problem.detailedExplanation = "<p>Multi details</p>";
+    quiz.loadProblems([problem]);
+    quiz.start();
+    const events = collectEvents(quiz, "multiSelectResult");
+    quiz.toggleMultiSelect(0);
+    quiz.toggleMultiSelect(2);
+    quiz.submitMultiSelect();
+    assert.equal(events[0].detailedExplanation, "<p>Multi details</p>");
+  });
+
+  it("included in orderingResult event when present", () => {
+    const quiz = new OpenQuizzer();
+    const problem = orderingProblem("o1");
+    problem.detailedExplanation = "<p>Ordering details</p>";
+    quiz.loadProblems([problem]);
+    quiz.start();
+    const events = collectEvents(quiz, "orderingResult");
+    quiz.submitOrdering();
+    assert.equal(events[0].detailedExplanation, "<p>Ordering details</p>");
+  });
+
+  it("included in two-stage final optionSelected via stage", () => {
+    const quiz = new OpenQuizzer();
+    const problem = twoStageProblem("ts1");
+    problem.stages[1].detailedExplanation = "<p>Stage 2 details</p>";
+    quiz.loadProblems([problem]);
+    quiz.start();
+    const events = collectEvents(quiz, "optionSelected");
+    quiz.selectOption(0); // stage 1
+    quiz.selectOption(1); // stage 2 (final)
+    assert.equal(events[0].detailedExplanation, "<p>Stage 2 details</p>");
   });
 });
 
@@ -1911,6 +1987,9 @@ describe("index.html UI wiring contracts", () => {
       "results-dashboard-btn",
       "dashboard-back-btn",
       "history-section",
+      // Detailed explanation
+      "feedback-detail-toggle",
+      "feedback-detail",
     ];
 
     for (const id of requiredIds) {

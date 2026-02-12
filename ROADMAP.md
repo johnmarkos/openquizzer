@@ -2,6 +2,15 @@
 
 Future features and improvements for OpenQuizzer.
 
+## Done (v2.8.1: Expandable Mini-Lessons)
+
+Optional `detailedExplanation` field on problems. When present, a "Learn more" toggle appears below the short explanation, expanding into a richer mini-lesson (supports HTML). Backward-compatible — problems without it behave exactly as before.
+
+- [x] **Engine: pass detailedExplanation through events** — Added to all 5 result event payloads (optionSelected, numericResult, multiSelectResult, orderingResult, two-stage final). Field is `undefined` when absent.
+- [x] **UI: "Learn more" toggle** — Button appears below explanation when `detailedExplanation` is present. Expands/collapses a detail div. Resets on each new question.
+- [x] **Tests** — Engine tests for presence/absence across all question types. UI wiring tests for new elements.
+- [x] **Sample content** — Added `detailedExplanation` to 3 sample problems to demonstrate the feature.
+
 ## Done (v2.8: Session History & Aggregate Dashboard)
 
 Session history with localStorage persistence, paste-back import/export, and a cross-session aggregate dashboard. Pulled forward localStorage features originally planned for v2.9 since they fit naturally with the import/aggregate work.

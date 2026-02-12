@@ -290,6 +290,39 @@
         color: var(--error);
       }
 
+      .detail-toggle {
+        background: none;
+        border: none;
+        color: var(--accent);
+        font-family: inherit;
+        font-size: 0.8rem;
+        cursor: pointer;
+        padding: 0;
+        margin-top: 0.5rem;
+      }
+
+      .detail-toggle:hover {
+        text-decoration: underline;
+      }
+
+      .detail-toggle:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .feedback-detail {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: var(--text);
+      }
+
+      .feedback-detail a {
+        color: var(--accent);
+      }
+
       /* Error message */
       .error-msg {
         display: none;
@@ -986,6 +1019,16 @@
           <div class="feedback" id="feedback" aria-live="polite">
             <div class="feedback-title" id="feedback-title"></div>
             <div id="feedback-explanation"></div>
+            <button
+              id="feedback-detail-toggle"
+              class="detail-toggle hidden-container"
+            >
+              Learn more
+            </button>
+            <div
+              id="feedback-detail"
+              class="feedback-detail hidden-container"
+            ></div>
           </div>
 
           <div class="nav-row">
@@ -1116,6 +1159,10 @@
       const feedbackExplanation = document.getElementById(
         "feedback-explanation",
       );
+      const feedbackDetailToggle = document.getElementById(
+        "feedback-detail-toggle",
+      );
+      const feedbackDetail = document.getElementById("feedback-detail");
       const nextBtn = document.getElementById("next-btn");
       const skipBtn = document.getElementById("skip-btn");
       const multiSubmit = document.getElementById("multi-submit");
@@ -1504,11 +1551,33 @@
       // Feedback display
       // =============================================
 
-      function showFeedback(isCorrect, explanation) {
+      function showFeedback(isCorrect, explanation, detailedExplanation) {
         feedback.classList.add("visible");
         feedback.classList.add(isCorrect ? "correct" : "incorrect");
         feedbackTitle.textContent = isCorrect ? "Correct!" : "Incorrect";
         feedbackExplanation.textContent = explanation;
+
+        // Reset detailed explanation state
+        feedbackDetail.classList.add("hidden-container");
+        feedbackDetail.innerHTML = "";
+        feedbackDetailToggle.classList.add("hidden-container");
+        feedbackDetailToggle.textContent = "Learn more";
+
+        if (detailedExplanation) {
+          feedbackDetailToggle.classList.remove("hidden-container");
+          feedbackDetailToggle.onclick = () => {
+            const isHidden =
+              feedbackDetail.classList.contains("hidden-container");
+            if (isHidden) {
+              feedbackDetail.innerHTML = detailedExplanation;
+              feedbackDetail.classList.remove("hidden-container");
+              feedbackDetailToggle.textContent = "Show less";
+            } else {
+              feedbackDetail.classList.add("hidden-container");
+              feedbackDetailToggle.textContent = "Learn more";
+            }
+          };
+        }
 
         skipBtn.classList.add("hidden");
         const { current, total } = quiz.progress;
@@ -2111,6 +2180,7 @@
           correct,
           correctIndex,
           explanation,
+          detailedExplanation,
           isFinalStage,
           allCorrect,
         }) => {
@@ -2125,9 +2195,9 @@
           });
 
           if (isFinalStage) {
-            showFeedback(allCorrect, explanation);
+            showFeedback(allCorrect, explanation, detailedExplanation);
           } else {
-            showFeedback(correct, explanation);
+            showFeedback(correct, explanation, detailedExplanation);
           }
         },
       );
@@ -2157,18 +2227,22 @@
         }, TWO_STAGE_TRANSITION_DELAY);
       });
 
-      quiz.on("numericResult", ({ correct, formatted, unit, explanation }) => {
-        numericInput.disabled = true;
-        numericSubmit.disabled = true;
-        numericInput.classList.add(correct ? "correct" : "incorrect");
+      quiz.on(
+        "numericResult",
+        ({ correct, formatted, unit, explanation, detailedExplanation }) => {
+          numericInput.disabled = true;
+          numericSubmit.disabled = true;
+          numericInput.classList.add(correct ? "correct" : "incorrect");
 
-        if (!correct) {
-          correctAnswerDisplay.classList.remove("hidden-container");
-          correctAnswerValue.textContent = formatted + (unit ? " " + unit : "");
-        }
+          if (!correct) {
+            correctAnswerDisplay.classList.remove("hidden-container");
+            correctAnswerValue.textContent =
+              formatted + (unit ? " " + unit : "");
+          }
 
-        showFeedback(correct, explanation);
-      });
+          showFeedback(correct, explanation, detailedExplanation);
+        },
+      );
 
       quiz.on("multiSelectToggle", ({ index, selected }) => {
         const btn = optionsEl.querySelector(`[data-index="${index}"]`);
@@ -2178,7 +2252,13 @@
 
       quiz.on(
         "multiSelectResult",
-        ({ selected, correctIndices, correct, explanation }) => {
+        ({
+          selected,
+          correctIndices,
+          correct,
+          explanation,
+          detailedExplanation,
+        }) => {
           const selectedSet = new Set(selected);
           const buttons = optionsEl.querySelectorAll(
             ".option-btn.multi-select",
@@ -2199,7 +2279,7 @@
 
           multiSubmit.disabled = true;
           multiSubmitContainer.classList.add("hidden-container");
-          showFeedback(correct, explanation);
+          showFeedback(correct, explanation, detailedExplanation);
         },
       );
 
@@ -2209,7 +2289,13 @@
 
       quiz.on(
         "orderingResult",
-        ({ userOrder, correctOrder, correct, explanation }) => {
+        ({
+          userOrder,
+          correctOrder,
+          correct,
+          explanation,
+          detailedExplanation,
+        }) => {
           const items = orderingItems.querySelectorAll(".ordering-item");
           items.forEach((item) => {
             item.classList.add("disabled");
@@ -2237,7 +2323,7 @@
 
           orderingSubmit.disabled = true;
           selectedOrderingIndex = -1; // clear selection
-          showFeedback(correct, explanation);
+          showFeedback(correct, explanation, detailedExplanation);
         },
       );
 

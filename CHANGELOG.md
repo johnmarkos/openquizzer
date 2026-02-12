@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.8.1: Expandable Mini-Lessons
+
+- Added optional **`detailedExplanation`** field on problems — supports HTML content for richer explanations
+- Added **"Learn more" toggle** in feedback area — appears only when `detailedExplanation` is present; expands/collapses a detail section below the short explanation
+- Engine passes `detailedExplanation` through all 5 result event payloads (`optionSelected`, `numericResult`, `multiSelectResult`, `orderingResult`, two-stage final); `undefined` when absent (fully backward-compatible)
+- For two-stage problems, `detailedExplanation` is read from the individual stage object (not the top-level problem)
+- Added 8 new tests (6 engine + 2 UI wiring)
+- Added `detailedExplanation` to 3 sample problems in `content/unit-1-chapter-1.json`
+
 ## Simplify instance upgrade path (2026-02-10)
 
 - Made `openquizzer.test.js` **copy-verbatim** for instances — meta tag tests now import CONFIG and check dynamically instead of hardcoding template placeholder values. Instances no longer need to swap tests after copying.
