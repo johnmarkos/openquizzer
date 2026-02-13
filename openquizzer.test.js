@@ -12,7 +12,7 @@ import { CONFIG } from "./config.js";
 // Test fixtures
 // =============================================
 
-function mcProblem(id, correct = 1, { detailedExplanation } = {}) {
+function mcProblem(id, correct = 1, { detailedExplanation, references } = {}) {
   const problem = {
     id,
     type: "multiple-choice",
@@ -23,6 +23,7 @@ function mcProblem(id, correct = 1, { detailedExplanation } = {}) {
   };
   if (detailedExplanation !== undefined)
     problem.detailedExplanation = detailedExplanation;
+  if (references !== undefined) problem.references = references;
   return problem;
 }
 
@@ -666,6 +667,82 @@ describe("detailedExplanation", () => {
     quiz.selectOption(0); // stage 1
     quiz.selectOption(1); // stage 2 (final)
     assert.equal(events[0].detailedExplanation, "<p>Stage 2 details</p>");
+  });
+});
+
+// =============================================
+// references
+// =============================================
+
+describe("references", () => {
+  const sampleRefs = [
+    { title: "Wikipedia", url: "https://en.wikipedia.org/wiki/Test" },
+    { title: "Khan Academy", url: "https://www.khanacademy.org/test" },
+  ];
+
+  it("included in optionSelected event when present", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0, { references: sampleRefs })]);
+    quiz.start();
+    const events = collectEvents(quiz, "optionSelected");
+    quiz.selectOption(0);
+    assert.deepEqual(events[0].references, sampleRefs);
+  });
+
+  it("undefined in optionSelected event when absent", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0)]);
+    quiz.start();
+    const events = collectEvents(quiz, "optionSelected");
+    quiz.selectOption(0);
+    assert.equal(events[0].references, undefined);
+  });
+
+  it("included in numericResult event when present", () => {
+    const quiz = new OpenQuizzer();
+    const problem = numericProblem("n1", { answer: 100, tolerance: "exact" });
+    problem.references = sampleRefs;
+    quiz.loadProblems([problem]);
+    quiz.start();
+    const events = collectEvents(quiz, "numericResult");
+    quiz.submitNumeric("100");
+    assert.deepEqual(events[0].references, sampleRefs);
+  });
+
+  it("included in multiSelectResult event when present", () => {
+    const quiz = new OpenQuizzer();
+    const problem = multiSelectProblem("ms1", [0, 2]);
+    problem.references = sampleRefs;
+    quiz.loadProblems([problem]);
+    quiz.start();
+    const events = collectEvents(quiz, "multiSelectResult");
+    quiz.toggleMultiSelect(0);
+    quiz.toggleMultiSelect(2);
+    quiz.submitMultiSelect();
+    assert.deepEqual(events[0].references, sampleRefs);
+  });
+
+  it("included in orderingResult event when present", () => {
+    const quiz = new OpenQuizzer();
+    const problem = orderingProblem("o1");
+    problem.references = sampleRefs;
+    quiz.loadProblems([problem]);
+    quiz.start();
+    const events = collectEvents(quiz, "orderingResult");
+    quiz.submitOrdering();
+    assert.deepEqual(events[0].references, sampleRefs);
+  });
+
+  it("included in two-stage final optionSelected via stage", () => {
+    const quiz = new OpenQuizzer();
+    const problem = twoStageProblem("ts1");
+    problem.stages[1].references = sampleRefs;
+    quiz.loadProblems([problem]);
+    quiz.start();
+    const events = collectEvents(quiz, "optionSelected");
+    quiz.selectOption(0); // stage 1
+    quiz.selectOption(1); // stage 2 (final)
+    assert.deepEqual(events[0].references, sampleRefs);
   });
 });
 
@@ -2046,6 +2123,19 @@ describe("index.html UI wiring contracts", () => {
       assert.ok(
         html.includes(`content="${CONFIG.description}"`),
         `static meta description does not match CONFIG.description — update the <meta description> tag in index.html`,
+      );
+    });
+  });
+
+  // -----------------------------------------
+  // References rendering
+  // -----------------------------------------
+
+  describe("references rendering", () => {
+    it("renders references-list in showFeedback", () => {
+      assert.ok(
+        script.includes("references-list"),
+        "missing references-list class — references will not render",
       );
     });
   });

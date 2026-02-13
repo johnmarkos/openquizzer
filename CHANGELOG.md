@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.8.2: References (Further Reading Links)
+
+- Added optional **`references`** field on problems — an array of `{ title, url }` objects for "further reading" links
+- Either `references` or `detailedExplanation` (or both) triggers the **"Learn more" toggle**; they're independent
+- Engine passes `references` through all 5 result event payloads alongside `detailedExplanation`; `undefined` when absent (fully backward-compatible)
+- For two-stage problems, `references` is read from the individual stage object (same pattern as `detailedExplanation`)
+- References render as a compact link list (`<ul class="references-list">`) with `target="_blank" rel="noopener"` links
+- Added 7 new tests (6 engine + 1 UI wiring) — 189 total, all passing
+- Added `references` to 2 sample problems in `content/unit-1-chapter-1.json`
+
 ## v2.8.1: Expandable Mini-Lessons
 
 - Added optional **`detailedExplanation`** field on problems — supports HTML content for richer explanations

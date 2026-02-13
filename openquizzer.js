@@ -497,6 +497,7 @@ export class OpenQuizzer {
       correct: isCorrect,
       explanation: problem.explanation,
       detailedExplanation: problem.detailedExplanation,
+      references: problem.references,
     });
   }
 
@@ -530,6 +531,7 @@ export class OpenQuizzer {
       unit: problem.unit || "",
       explanation: problem.explanation,
       detailedExplanation: problem.detailedExplanation,
+      references: problem.references,
     });
   }
 
@@ -643,6 +645,7 @@ export class OpenQuizzer {
       correctIndex: problem.correct,
       explanation: problem.explanation,
       detailedExplanation: problem.detailedExplanation,
+      references: problem.references,
     });
   }
 
@@ -692,6 +695,7 @@ export class OpenQuizzer {
         correctIndex: stage.correct,
         explanation: stage.explanation,
         detailedExplanation: stage.detailedExplanation,
+        references: stage.references,
         isFinalStage: true,
         allCorrect,
       });
@@ -720,6 +724,7 @@ export class OpenQuizzer {
       correct: isCorrect,
       explanation: problem.explanation,
       detailedExplanation: problem.detailedExplanation,
+      references: problem.references,
     });
   }
 

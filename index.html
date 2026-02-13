@@ -324,6 +324,21 @@
         color: var(--accent);
       }
 
+      .references-list {
+        list-style: none;
+        margin-top: 0.5rem;
+        padding: 0;
+      }
+
+      .references-list li {
+        padding: 0.125rem 0;
+      }
+
+      .references-list a {
+        color: var(--accent);
+        font-size: 0.8rem;
+      }
+
       /* Error message */
       .error-msg {
         display: none;
@@ -1552,7 +1567,12 @@
       // Feedback display
       // =============================================
 
-      function showFeedback(isCorrect, explanation, detailedExplanation) {
+      function showFeedback(
+        isCorrect,
+        explanation,
+        detailedExplanation,
+        references,
+      ) {
         feedback.classList.add("visible");
         feedback.classList.add(isCorrect ? "correct" : "incorrect");
         feedbackTitle.textContent = isCorrect ? "Correct!" : "Incorrect";
@@ -1565,13 +1585,24 @@
         feedbackDetailToggle.textContent = "Learn more";
         feedbackDetailToggle.onclick = null;
 
-        if (detailedExplanation) {
+        const hasDetail =
+          detailedExplanation || (references && references.length > 0);
+
+        if (hasDetail) {
           feedbackDetailToggle.classList.remove("hidden-container");
           feedbackDetailToggle.onclick = () => {
             const isHidden =
               feedbackDetail.classList.contains("hidden-container");
             if (isHidden) {
-              feedbackDetail.innerHTML = detailedExplanation;
+              let html = detailedExplanation || "";
+              if (references && references.length > 0) {
+                html += '<ul class="references-list">';
+                for (const ref of references) {
+                  html += `<li><a href="${ref.url}" target="_blank" rel="noopener">${ref.title}</a></li>`;
+                }
+                html += "</ul>";
+              }
+              feedbackDetail.innerHTML = html;
               feedbackDetail.classList.remove("hidden-container");
               feedbackDetailToggle.textContent = "Show less";
             } else {
@@ -2183,6 +2214,7 @@
           correctIndex,
           explanation,
           detailedExplanation,
+          references,
           isFinalStage,
           allCorrect,
         }) => {
@@ -2197,9 +2229,14 @@
           });
 
           if (isFinalStage) {
-            showFeedback(allCorrect, explanation, detailedExplanation);
+            showFeedback(
+              allCorrect,
+              explanation,
+              detailedExplanation,
+              references,
+            );
           } else {
-            showFeedback(correct, explanation, detailedExplanation);
+            showFeedback(correct, explanation, detailedExplanation, references);
           }
         },
       );
@@ -2231,7 +2268,14 @@
 
       quiz.on(
         "numericResult",
-        ({ correct, formatted, unit, explanation, detailedExplanation }) => {
+        ({
+          correct,
+          formatted,
+          unit,
+          explanation,
+          detailedExplanation,
+          references,
+        }) => {
           numericInput.disabled = true;
           numericSubmit.disabled = true;
           numericInput.classList.add(correct ? "correct" : "incorrect");
@@ -2242,7 +2286,7 @@
               formatted + (unit ? " " + unit : "");
           }
 
-          showFeedback(correct, explanation, detailedExplanation);
+          showFeedback(correct, explanation, detailedExplanation, references);
         },
       );
 
@@ -2260,6 +2304,7 @@
           correct,
           explanation,
           detailedExplanation,
+          references,
         }) => {
           const selectedSet = new Set(selected);
           const buttons = optionsEl.querySelectorAll(
@@ -2281,7 +2326,7 @@
 
           multiSubmit.disabled = true;
           multiSubmitContainer.classList.add("hidden-container");
-          showFeedback(correct, explanation, detailedExplanation);
+          showFeedback(correct, explanation, detailedExplanation, references);
         },
       );
 
@@ -2297,6 +2342,7 @@
           correct,
           explanation,
           detailedExplanation,
+          references,
         }) => {
           const items = orderingItems.querySelectorAll(".ordering-item");
           items.forEach((item) => {
@@ -2325,7 +2371,7 @@
 
           orderingSubmit.disabled = true;
           selectedOrderingIndex = -1; // clear selection
-          showFeedback(correct, explanation, detailedExplanation);
+          showFeedback(correct, explanation, detailedExplanation, references);
         },
       );
 

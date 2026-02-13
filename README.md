@@ -74,11 +74,19 @@ The filename must match the pattern `unit-{unitId}-chapter-{chapterNum}.json`.
   "options": ["London", "Paris", "Berlin", "Madrid"],
   "correct": 1,
   "explanation": "Paris has been the capital of France since the 10th century.",
-  "detailedExplanation": "<p>Optional rich HTML shown behind a <strong>Learn more</strong> toggle.</p>"
+  "detailedExplanation": "<p>Optional rich HTML shown behind a <strong>Learn more</strong> toggle.</p>",
+  "references": [
+    {
+      "title": "Paris - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Paris"
+    }
+  ]
 }
 ```
 
 All question types support the optional `detailedExplanation` field. When present, a "Learn more" toggle appears below the short explanation, expanding into the detailed content. HTML is supported. When absent, the UI behaves as before.
+
+The optional `references` field adds a list of "further reading" links. Each entry needs a `title` and `url`. Either `references` or `detailedExplanation` (or both) triggers the "Learn more" toggle. References render as clickable links that open in a new tab.
 
 **Numeric input** (supports K/M/B/T suffixes from users):
 

@@ -10,7 +10,17 @@
       "options": ["London", "Paris", "Berlin", "Madrid"],
       "correct": 1,
       "explanation": "Paris has been the capital of France since the 10th century.",
-      "detailedExplanation": "<p>Paris became the capital when <strong>Hugh Capet</strong>, the first King of the Franks of the House of Capet, made it his seat of power in 987 AD. The city's position on the Seine River made it a natural hub for trade and governance.</p><p>Today, Paris is home to over 2 million people in the city proper and over 12 million in the metropolitan area, making it the most populous urban area in the European Union.</p>"
+      "detailedExplanation": "<p>Paris became the capital when <strong>Hugh Capet</strong>, the first King of the Franks of the House of Capet, made it his seat of power in 987 AD. The city's position on the Seine River made it a natural hub for trade and governance.</p><p>Today, Paris is home to over 2 million people in the city proper and over 12 million in the metropolitan area, making it the most populous urban area in the European Union.</p>",
+      "references": [
+        {
+          "title": "Paris - Wikipedia",
+          "url": "https://en.wikipedia.org/wiki/Paris"
+        },
+        {
+          "title": "History of Paris (Britannica)",
+          "url": "https://www.britannica.com/place/Paris/History"
+        }
+      ]
     },
     {
       "id": "mc-002",
@@ -20,7 +30,13 @@
       "options": ["Venus", "Earth", "Mercury", "Mars"],
       "correct": 2,
       "explanation": "Mercury orbits at an average distance of about 58 million km from the Sun.",
-      "detailedExplanation": "<p>Mercury is the smallest planet in the Solar System and the closest to the Sun, orbiting at an average distance of 57.9 million km. Despite being closest, it is <strong>not</strong> the hottest — Venus holds that title due to its thick greenhouse atmosphere.</p><p>A year on Mercury (one orbit) takes just 88 Earth days, but a single day-night cycle takes 176 Earth days because of its slow rotation.</p>"
+      "detailedExplanation": "<p>Mercury is the smallest planet in the Solar System and the closest to the Sun, orbiting at an average distance of 57.9 million km. Despite being closest, it is <strong>not</strong> the hottest — Venus holds that title due to its thick greenhouse atmosphere.</p><p>A year on Mercury (one orbit) takes just 88 Earth days, but a single day-night cycle takes 176 Earth days because of its slow rotation.</p>",
+      "references": [
+        {
+          "title": "Mercury (planet) - Wikipedia",
+          "url": "https://en.wikipedia.org/wiki/Mercury_(planet)"
+        }
+      ]
     },
     {
       "id": "mc-003",
