@@ -53,6 +53,13 @@ Enrich the results page with actionable feedback computed entirely from the curr
 - [ ] **Timed mode** — Optional countdown per problem for interview pressure simulation
 - [ ] **Streak tracking** — Daily practice streaks with visual indicator
 
+## Requested by Instances (Post-v3.0 Candidates)
+
+- [ ] **Content QA lint command** — Add a zero-dependency `node` script that scans content for quality risks before publish: duplicate stems within a chapter, single-answer multi-selects, repeated explanation templates, missing/invalid references, and suspicious artifact text. Output should be machine-readable (JSON) plus a concise terminal summary.
+- [ ] **Interview case mode (linked prompts)** — Support a single evolving case with 4-8 linked prompts where new constraints appear mid-session (e.g., "traffic spike", "compliance requirement"). Preserve context across prompts and score both correctness and adaptation quality.
+- [ ] **Confidence capture + calibration metrics** — Optional confidence input per answer (e.g., low/medium/high) and dashboard metrics that compare confidence vs correctness to expose overconfidence and guide review priority.
+- [ ] **Blueprint coverage planner** — Allow instances to define target coverage weights (tags/units/chapters) and report under-practiced areas directly in the dashboard so users can train to an interview blueprint instead of random volume.
+
 ## Exploring
 
 - [ ] **Image-based questions** — Display an image as part of the question (diagrams, charts, maps). Answer types: MC, numeric, or hotspot
