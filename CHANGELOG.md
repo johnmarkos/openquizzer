@@ -3,6 +3,7 @@
 ## v2.9 Batch 2 Review Fixes (Pass 3)
 
 - **Problem metadata persistence** — `allProblemsById` now saved to localStorage on chapter load and restored on page init. Weakest-areas dashboard shows question previews even when the user navigates directly to the dashboard without loading chapters first. Cleared alongside other history data.
+- **Lint templated-phrase detection** — `content-lint.js` now detects chapters where a high fraction of explanations share the same opening phrase (>=30% of problems), flagging likely generated/templated language. Configurable thresholds.
 - Added 3 new wiring tests — **253 total tests**, all passing.
 
 ## v2.9 Batch 2 Review Fixes (Pass 2)

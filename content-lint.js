@@ -26,6 +26,16 @@ const CONTENT_DIR = path.join(__dirname, "content");
 /** Explanations appearing this many times or more are flagged. */
 const REPEATED_EXPLANATION_THRESHOLD = 3;
 
+/**
+ * When a phrase (6+ words) from an explanation appears in this fraction
+ * of a chapter's problems or more, flag as templated language.
+ * E.g., 0.3 = phrase must appear in ≥30% of chapter problems.
+ */
+const TEMPLATE_PHRASE_RATIO_THRESHOLD = 0.3;
+
+/** Minimum chapter size for template phrase check to fire. */
+const TEMPLATE_PHRASE_MIN_PROBLEMS = 10;
+
 /** Patterns that suggest incomplete or placeholder content. */
 const SUSPICIOUS_PATTERNS = [
   /\/\/\s*\.\.\.\s*existing code/i,
@@ -349,6 +359,66 @@ function checkRepeatedWords(problem, file) {
   }
 }
 
+// ── Templated Explanation Phrases ─────────────────────────────────────────
+
+/**
+ * Extract a leading phrase (first N words) from explanation text.
+ * Returns null if the explanation is too short.
+ */
+function extractLeadingPhrase(text, wordCount = 6) {
+  // Strip HTML tags for cleaner phrase extraction
+  const clean = text.replace(/<[^>]+>/g, " ").trim();
+  const words = clean.split(/\s+/);
+  if (words.length < wordCount) return null;
+  return words.slice(0, wordCount).join(" ").toLowerCase();
+}
+
+/**
+ * Detect chapters where a large fraction of explanations share the same
+ * leading phrase, indicating templated/generated language.
+ * Runs per-chapter after all problems are collected.
+ */
+function checkTemplatedPhrases(file, problems) {
+  if (problems.length < TEMPLATE_PHRASE_MIN_PROBLEMS) return;
+
+  // Collect leading phrases from all explanations in this chapter
+  /** @type {Map<string, number>} phrase → count */
+  const phraseCounts = new Map();
+
+  for (const problem of problems) {
+    const explanations = [];
+    if (problem.explanation) explanations.push(problem.explanation);
+    if (Array.isArray(problem.stages)) {
+      for (const stage of problem.stages) {
+        if (stage.explanation) explanations.push(stage.explanation);
+      }
+    }
+
+    for (const exp of explanations) {
+      const phrase = extractLeadingPhrase(exp);
+      if (phrase) {
+        phraseCounts.set(phrase, (phraseCounts.get(phrase) || 0) + 1);
+      }
+    }
+  }
+
+  // Flag phrases that appear in a high fraction of problems
+  const threshold = Math.ceil(
+    problems.length * TEMPLATE_PHRASE_RATIO_THRESHOLD,
+  );
+  for (const [phrase, count] of phraseCounts) {
+    if (count >= threshold) {
+      addIssue(
+        "warning",
+        file,
+        null,
+        "templated-phrase",
+        `Explanation phrase appears ${count}/${problems.length} times (${Math.round((count / problems.length) * 100)}%): "${phrase}..."`,
+      );
+    }
+  }
+}
+
 // ── Cross-Problem Checks ──────────────────────────────────────────────────
 
 function checkSingleCorrectMultiSelect(problem, file) {
@@ -496,6 +566,9 @@ function runChecks(chapters) {
         explanationCounts.get(exp).push(`${file}:${pid}`);
       }
     }
+
+    // ── Per-chapter templated phrase density ──
+    checkTemplatedPhrases(file, data.problems);
   }
 
   // ── Cross-chapter duplicate IDs ──
