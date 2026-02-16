@@ -5,6 +5,10 @@ import {
   validateSessionSummary,
   deduplicateSessions,
   computeAggregateStats,
+  updateProblemTracking,
+  computeProficiency,
+  computeWeakestAreas,
+  computeSRWeights,
 } from "./openquizzer.js";
 import { CONFIG } from "./config.js";
 
@@ -173,6 +177,7 @@ describe("state machine", () => {
       total: 0,
       percentage: 0,
       skipped: 0,
+      timedOut: 0,
     });
   });
 });
@@ -1027,6 +1032,7 @@ describe("getters", () => {
       total: 5,
       percentage: 100,
       skipped: 0,
+      timedOut: 0,
     });
     assert.equal(summary.results.length, 5);
 
@@ -1056,6 +1062,7 @@ describe("getters", () => {
       total: 1,
       percentage: 100,
       skipped: 0,
+      timedOut: 0,
     });
     assert.equal(summary.results.length, 1);
     assert.equal(summary.results[0].id, firstProblem.id);
@@ -1073,6 +1080,7 @@ describe("getters", () => {
       total: 0,
       percentage: 0,
       skipped: 0,
+      timedOut: 0,
     });
     assert.deepEqual(summary.results, []);
   });
@@ -1085,6 +1093,7 @@ describe("getters", () => {
       total: 0,
       percentage: 0,
       skipped: 0,
+      timedOut: 0,
     });
     assert.deepEqual(summary.results, []);
     assert.ok(!Number.isNaN(Date.parse(summary.timestamp)));
@@ -1838,6 +1847,606 @@ describe("computeAggregateStats", () => {
 });
 
 // =============================================
+// Timeout (timed mode)
+// =============================================
+
+describe("timeout", () => {
+  it("advances to next question", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1"), mcProblem("m2")]);
+    quiz.start();
+    const questions = collectEvents(quiz, "questionShow");
+    quiz.timeout();
+    assert.equal(quiz.state, "practicing");
+    assert.equal(questions.length, 1);
+    assert.equal(questions[0].index, 1);
+  });
+
+  it("on last question completes session", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1")]);
+    quiz.start();
+    const completes = collectEvents(quiz, "complete");
+    quiz.timeout();
+    assert.equal(quiz.state, "complete");
+    assert.equal(completes.length, 1);
+  });
+
+  it("ignored outside practicing state", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1")]);
+    const timeoutEvents = collectEvents(quiz, "timeout");
+    quiz.timeout(); // idle — should be ignored
+    assert.equal(timeoutEvents.length, 0);
+    assert.equal(quiz.state, "idle");
+
+    quiz.start();
+    quiz.selectOption(0); // now in answered state
+    quiz.timeout(); // answered — should be ignored
+    assert.equal(timeoutEvents.length, 0);
+    assert.equal(quiz.state, "answered");
+  });
+
+  it("timedOut excluded from score total; score.timedOut count correct", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([
+      mcProblem("m1", 0),
+      mcProblem("m2", 0),
+      mcProblem("m3", 0),
+    ]);
+    quiz.start();
+
+    // Timeout first, answer second correctly, timeout third
+    quiz.timeout();
+    quiz.selectOption(quiz.problem.correct);
+    quiz.next();
+    quiz.timeout();
+
+    const score = quiz.score;
+    assert.equal(score.correct, 1);
+    assert.equal(score.total, 1);
+    assert.equal(score.percentage, 100);
+    assert.equal(score.timedOut, 2);
+    assert.equal(score.skipped, 0);
+  });
+
+  it("emits timeout event with correct payload", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1"), mcProblem("m2")]);
+    quiz.start();
+    const timeoutEvents = collectEvents(quiz, "timeout");
+    const firstProblem = quiz.problem;
+    quiz.timeout();
+    assert.equal(timeoutEvents.length, 1);
+    assert.equal(timeoutEvents[0].problemId, firstProblem.id);
+    assert.equal(timeoutEvents[0].index, 0);
+    assert.equal(timeoutEvents[0].total, 2);
+  });
+
+  it("timedOut in session summary results", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0), mcProblem("m2", 0)]);
+    quiz.start();
+    quiz.timeout();
+    quiz.selectOption(quiz.problem.correct);
+
+    const summary = quiz.getSessionSummary();
+    const timedOutResult = summary.results.find((r) => r.timedOut);
+    assert.ok(timedOutResult, "should have a timed out result");
+    assert.equal(timedOutResult.userAnswer, null);
+    assert.equal(timedOutResult.correctAnswer, null);
+    assert.equal(summary.score.timedOut, 1);
+  });
+
+  it("breakdownByType excludes timedOut", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0), mcProblem("m2", 0)]);
+    quiz.start();
+    quiz.timeout(); // timed out
+    quiz.selectOption(quiz.problem.correct); // answered
+
+    const summary = quiz.getSessionSummary();
+    const mcBreakdown = summary.breakdownByType["multiple-choice"];
+    assert.equal(mcBreakdown.total, 1);
+    assert.equal(mcBreakdown.correct, 1);
+  });
+
+  it("score.timedOut defaults to 0", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0)]);
+    quiz.start();
+    quiz.selectOption(0);
+    assert.equal(quiz.score.timedOut, 0);
+  });
+});
+
+// =============================================
+// Snapshot / Resume
+// =============================================
+
+describe("snapshot and resume", () => {
+  it("getSnapshot returns correct shape and defensive copies", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0), mcProblem("m2", 1)], 0, {
+      chapterTitle: "Ch1",
+    });
+    quiz.start();
+    quiz.selectOption(quiz.problem.correct);
+
+    const snapshot = quiz.getSnapshot();
+    assert.ok(Array.isArray(snapshot.problems));
+    assert.ok(Array.isArray(snapshot.allProblems));
+    assert.ok(Array.isArray(snapshot.answers));
+    assert.deepEqual(snapshot.context, { chapterTitle: "Ch1" });
+    assert.equal(snapshot.maxProblems, 0);
+
+    // Defensive copies — mutating snapshot should not affect quiz
+    snapshot.answers.push({ fake: true });
+    assert.equal(quiz.answers.length, 1);
+  });
+
+  it("restoreSession + resume continues from saved position", () => {
+    const quiz1 = new OpenQuizzer();
+    quiz1.loadProblems([mcProblem("m1", 0), mcProblem("m2", 1)]);
+    quiz1.start();
+    quiz1.selectOption(quiz1.problem.correct);
+    const snapshot = quiz1.getSnapshot();
+
+    const quiz2 = new OpenQuizzer();
+    quiz2.restoreSession(snapshot);
+    assert.equal(quiz2.state, "idle");
+
+    const questions = collectEvents(quiz2, "questionShow");
+    quiz2.resume();
+    assert.equal(quiz2.state, "practicing");
+    assert.equal(questions.length, 1);
+    assert.equal(questions[0].index, 1); // should be at second question
+  });
+
+  it("resume emits questionShow at correct index", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([
+      mcProblem("m1", 0),
+      mcProblem("m2", 1),
+      mcProblem("m3", 0),
+    ]);
+    quiz.start();
+    quiz.selectOption(quiz.problem.correct);
+    quiz.next();
+    quiz.selectOption(quiz.problem.correct);
+    const snapshot = quiz.getSnapshot();
+
+    const quiz2 = new OpenQuizzer();
+    quiz2.restoreSession(snapshot);
+    const questions = collectEvents(quiz2, "questionShow");
+    quiz2.resume();
+    assert.equal(questions[0].index, 2); // third question (0-indexed)
+  });
+
+  it("resume ignored when not idle", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0), mcProblem("m2", 1)]);
+    quiz.start();
+    const questions = collectEvents(quiz, "questionShow");
+    quiz.resume(); // already practicing — should be ignored
+    assert.equal(questions.length, 0);
+  });
+
+  it("resume with all answered triggers complete", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1", 0)]);
+    quiz.start();
+    quiz.selectOption(0);
+    quiz.next(); // completes
+
+    const snapshot = quiz.getSnapshot();
+    const quiz2 = new OpenQuizzer();
+    quiz2.restoreSession(snapshot);
+    const completes = collectEvents(quiz2, "complete");
+    quiz2.resume();
+    assert.equal(quiz2.state, "complete");
+    assert.equal(completes.length, 1);
+  });
+
+  it("retry works after resume (allProblems restored correctly)", () => {
+    const quiz1 = new OpenQuizzer();
+    quiz1.loadProblems([mcProblem("m1", 0), mcProblem("m2", 1)]);
+    quiz1.start();
+    quiz1.selectOption(quiz1.problem.correct);
+    const snapshot = quiz1.getSnapshot();
+
+    const quiz2 = new OpenQuizzer();
+    quiz2.restoreSession(snapshot);
+    quiz2.resume();
+    quiz2.selectOption(0); // answer second
+    quiz2.next(); // completes
+
+    quiz2.retry();
+    assert.equal(quiz2.state, "practicing");
+    assert.equal(quiz2.progress.total, 2);
+  });
+
+  it("restoreSession preserves problem order (no reshuffle)", () => {
+    const quiz1 = new OpenQuizzer();
+    quiz1.loadProblems([
+      mcProblem("m1", 0),
+      mcProblem("m2", 1),
+      mcProblem("m3", 0),
+    ]);
+    quiz1.start();
+    const snapshot = quiz1.getSnapshot();
+    const originalOrder = snapshot.problems.map((p) => p.id);
+
+    const quiz2 = new OpenQuizzer();
+    quiz2.restoreSession(snapshot);
+    const snapshot2 = quiz2.getSnapshot();
+    const restoredOrder = snapshot2.problems.map((p) => p.id);
+
+    assert.deepEqual(originalOrder, restoredOrder);
+  });
+
+  it("start() after restoreSession still resets normally", () => {
+    const quiz1 = new OpenQuizzer();
+    quiz1.loadProblems([mcProblem("m1", 0), mcProblem("m2", 1)]);
+    quiz1.start();
+    quiz1.selectOption(quiz1.problem.correct);
+    const snapshot = quiz1.getSnapshot();
+
+    const quiz2 = new OpenQuizzer();
+    quiz2.restoreSession(snapshot);
+    quiz2.start(); // should reset, not resume
+    assert.equal(quiz2.state, "practicing");
+    assert.equal(quiz2.score.total, 0);
+    assert.deepEqual(quiz2.progress, { current: 1, total: 2 });
+  });
+});
+
+// =============================================
+// Per-problem tracking
+// =============================================
+
+describe("updateProblemTracking", () => {
+  function makeTrackingSummary(results) {
+    return {
+      timestamp: "2025-06-01T12:00:00.000Z",
+      score: { correct: 0, total: 0, percentage: 0, skipped: 0, timedOut: 0 },
+      results,
+    };
+  }
+
+  it("creates tracking from empty/null input", () => {
+    const summary = makeTrackingSummary([
+      { id: "m1", type: "multiple-choice", correct: true },
+    ]);
+    const tracking = updateProblemTracking(null, summary);
+    assert.deepEqual(tracking.m1, {
+      seen: 1,
+      correct: 1,
+      lastSeen: "2025-06-01T12:00:00.000Z",
+    });
+  });
+
+  it("increments existing entries correctly", () => {
+    const existing = {
+      m1: { seen: 2, correct: 1, lastSeen: "2025-05-01T00:00:00.000Z" },
+    };
+    const summary = makeTrackingSummary([
+      { id: "m1", type: "multiple-choice", correct: false },
+    ]);
+    const tracking = updateProblemTracking(existing, summary);
+    assert.equal(tracking.m1.seen, 3);
+    assert.equal(tracking.m1.correct, 1);
+    assert.equal(tracking.m1.lastSeen, "2025-06-01T12:00:00.000Z");
+  });
+
+  it("skipped problems not tracked", () => {
+    const summary = makeTrackingSummary([
+      { id: "m1", type: "multiple-choice", correct: false, skipped: true },
+    ]);
+    const tracking = updateProblemTracking(null, summary);
+    assert.equal(tracking.m1, undefined);
+  });
+
+  it("timedOut problems not tracked", () => {
+    const summary = makeTrackingSummary([
+      { id: "m1", type: "multiple-choice", correct: false, timedOut: true },
+    ]);
+    const tracking = updateProblemTracking(null, summary);
+    assert.equal(tracking.m1, undefined);
+  });
+
+  it("returns new object (no mutation)", () => {
+    const existing = {
+      m1: { seen: 1, correct: 1, lastSeen: "2025-05-01T00:00:00.000Z" },
+    };
+    const summary = makeTrackingSummary([
+      { id: "m1", type: "multiple-choice", correct: true },
+    ]);
+    const tracking = updateProblemTracking(existing, summary);
+    assert.notEqual(tracking, existing);
+    assert.equal(existing.m1.seen, 1); // original unchanged
+  });
+
+  it("updates lastSeen to session timestamp", () => {
+    const summary = {
+      timestamp: "2025-07-15T10:30:00.000Z",
+      score: { correct: 1, total: 1, percentage: 100, skipped: 0, timedOut: 0 },
+      results: [{ id: "m1", type: "multiple-choice", correct: true }],
+    };
+    const tracking = updateProblemTracking(null, summary);
+    assert.equal(tracking.m1.lastSeen, "2025-07-15T10:30:00.000Z");
+  });
+
+  it("handles multiple results in one session", () => {
+    const summary = makeTrackingSummary([
+      { id: "m1", type: "multiple-choice", correct: true },
+      { id: "m2", type: "multiple-choice", correct: false },
+      { id: "m1", type: "multiple-choice", correct: false },
+    ]);
+    const tracking = updateProblemTracking(null, summary);
+    assert.equal(tracking.m1.seen, 2);
+    assert.equal(tracking.m1.correct, 1);
+    assert.equal(tracking.m2.seen, 1);
+    assert.equal(tracking.m2.correct, 0);
+  });
+});
+
+// =============================================
+// computeAggregateStats — timedOut
+// =============================================
+
+describe("computeAggregateStats with timedOut", () => {
+  it("tracks totalTimedOut", () => {
+    const stats = computeAggregateStats([
+      {
+        timestamp: "2025-01-01T00:00:00Z",
+        score: {
+          correct: 2,
+          total: 3,
+          percentage: 67,
+          skipped: 0,
+          timedOut: 2,
+        },
+        results: [],
+      },
+    ]);
+    assert.equal(stats.totalTimedOut, 2);
+  });
+
+  it("timedOut results excluded from mostMissed counts", () => {
+    const stats = computeAggregateStats([
+      {
+        timestamp: "2025-01-01T00:00:00Z",
+        score: { correct: 0, total: 1, percentage: 0, skipped: 0, timedOut: 1 },
+        results: [
+          { id: "t1", question: "Q1", timedOut: true, correct: false },
+          { id: "m1", question: "Q2", correct: false },
+        ],
+      },
+    ]);
+    assert.equal(stats.mostMissed.length, 1);
+    assert.equal(stats.mostMissed[0].id, "m1");
+  });
+});
+
+// =============================================
+// computeProficiency
+// =============================================
+
+describe("computeProficiency", () => {
+  it("perfect recent answers → near 1.0", () => {
+    const now = new Date("2025-06-01T12:00:00Z");
+    const entry = { seen: 10, correct: 10, lastSeen: "2025-06-01T11:00:00Z" };
+    const score = computeProficiency(entry, now);
+    assert.ok(score > 0.95, `expected near 1.0, got ${score}`);
+  });
+
+  it("all-wrong recent answers → near 0.0", () => {
+    const now = new Date("2025-06-01T12:00:00Z");
+    const entry = { seen: 10, correct: 0, lastSeen: "2025-06-01T11:00:00Z" };
+    const score = computeProficiency(entry, now);
+    assert.ok(score < 0.05, `expected near 0.0, got ${score}`);
+  });
+
+  it("decays toward 0.5 over time", () => {
+    const entry = { seen: 10, correct: 10, lastSeen: "2025-01-01T00:00:00Z" };
+    const recent = computeProficiency(entry, "2025-01-02T00:00:00Z");
+    const stale = computeProficiency(entry, "2025-04-01T00:00:00Z");
+    assert.ok(
+      stale < recent,
+      `stale (${stale}) should be less than recent (${recent})`,
+    );
+    assert.ok(
+      stale > 0.45 && stale < 0.65,
+      `stale should be near 0.5, got ${stale}`,
+    );
+  });
+
+  it("seen=0 → 0.5", () => {
+    assert.equal(
+      computeProficiency({ seen: 0, correct: 0, lastSeen: null }, new Date()),
+      0.5,
+    );
+  });
+
+  it("lastSeen=null → 0.5", () => {
+    assert.equal(
+      computeProficiency({ seen: 3, correct: 2, lastSeen: null }, new Date()),
+      0.5,
+    );
+  });
+
+  it("null entry → 0.5", () => {
+    assert.equal(computeProficiency(null, new Date()), 0.5);
+  });
+});
+
+// =============================================
+// computeWeakestAreas
+// =============================================
+
+describe("computeWeakestAreas", () => {
+  it("returns sorted by proficiency ascending", () => {
+    const now = new Date("2025-06-01T12:00:00Z");
+    const tracking = {
+      p1: { seen: 10, correct: 9, lastSeen: "2025-06-01T11:00:00Z" },
+      p2: { seen: 10, correct: 2, lastSeen: "2025-06-01T11:00:00Z" },
+      p3: { seen: 10, correct: 5, lastSeen: "2025-06-01T11:00:00Z" },
+    };
+    const problemsById = {
+      p1: { id: "p1", question: "Q1" },
+      p2: { id: "p2", question: "Q2" },
+      p3: { id: "p3", question: "Q3" },
+    };
+    const result = computeWeakestAreas(tracking, problemsById, 10, now);
+    assert.equal(result.length, 3);
+    assert.equal(result[0].id, "p2"); // worst
+    assert.equal(result[2].id, "p1"); // best
+    assert.ok(result[0].proficiency <= result[1].proficiency);
+    assert.ok(result[1].proficiency <= result[2].proficiency);
+  });
+
+  it("respects limit", () => {
+    const now = new Date("2025-06-01T12:00:00Z");
+    const tracking = {};
+    const problemsById = {};
+    for (let i = 0; i < 20; i++) {
+      tracking[`p${i}`] = {
+        seen: 5,
+        correct: i % 5,
+        lastSeen: "2025-06-01T11:00:00Z",
+      };
+      problemsById[`p${i}`] = { id: `p${i}`, question: `Q${i}` };
+    }
+    const result = computeWeakestAreas(tracking, problemsById, 5, now);
+    assert.equal(result.length, 5);
+  });
+
+  it("skips entries with seen=0", () => {
+    const now = new Date("2025-06-01T12:00:00Z");
+    const tracking = {
+      p1: { seen: 0, correct: 0, lastSeen: null },
+      p2: { seen: 5, correct: 1, lastSeen: "2025-06-01T11:00:00Z" },
+    };
+    const problemsById = {
+      p1: { id: "p1", question: "Q1" },
+      p2: { id: "p2", question: "Q2" },
+    };
+    const result = computeWeakestAreas(tracking, problemsById, 10, now);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, "p2");
+  });
+});
+
+// =============================================
+// computeSRWeights
+// =============================================
+
+describe("computeSRWeights", () => {
+  it("returns higher weight for low-proficiency problems", () => {
+    const now = new Date("2025-06-01T12:00:00Z");
+    const problems = [mcProblem("good"), mcProblem("bad")];
+    const tracking = {
+      good: { seen: 10, correct: 10, lastSeen: "2025-06-01T11:00:00Z" },
+      bad: { seen: 10, correct: 0, lastSeen: "2025-06-01T11:00:00Z" },
+    };
+    const weights = computeSRWeights(problems, tracking, now);
+    assert.ok(
+      weights.bad > weights.good,
+      `bad weight (${weights.bad}) should exceed good (${weights.good})`,
+    );
+  });
+
+  it("returns 1.5 for unseen problems", () => {
+    const now = new Date("2025-06-01T12:00:00Z");
+    const problems = [mcProblem("new1")];
+    const weights = computeSRWeights(problems, {}, now);
+    assert.equal(weights.new1, 1.5);
+  });
+
+  it("all weights are in [1.0, 2.0] range", () => {
+    const now = new Date("2025-06-01T12:00:00Z");
+    const problems = [mcProblem("a"), mcProblem("b"), mcProblem("c")];
+    const tracking = {
+      a: { seen: 10, correct: 10, lastSeen: "2025-06-01T11:00:00Z" },
+      b: { seen: 10, correct: 0, lastSeen: "2025-06-01T11:00:00Z" },
+      c: { seen: 10, correct: 5, lastSeen: "2025-05-01T00:00:00Z" },
+    };
+    const weights = computeSRWeights(problems, tracking, now);
+    for (const [id, w] of Object.entries(weights)) {
+      assert.ok(w >= 1.0 && w <= 2.0, `weight for ${id} = ${w} out of range`);
+    }
+  });
+});
+
+// =============================================
+// Spaced repetition integration
+// =============================================
+
+describe("spaced repetition integration", () => {
+  it("weightedShuffle with SR weights biases selection toward high-weight problems", () => {
+    // Create 2 problems: one with very high weight, one with weight 1
+    // Run many shuffles and verify the high-weight problem appears first more often
+    const heavyProblem = mcProblem("heavy");
+    const lightProblem = mcProblem("light");
+    const problems = [heavyProblem, lightProblem];
+
+    // Use a recent lastSeen so proficiency doesn't decay toward 0.5
+    const recentDate = new Date(Date.now() - 3600000).toISOString(); // 1 hour ago
+    const tracking = {
+      heavy: { seen: 10, correct: 0, lastSeen: recentDate },
+      light: { seen: 10, correct: 10, lastSeen: recentDate },
+    };
+
+    let heavyFirst = 0;
+    const iterations = 100;
+    for (let i = 0; i < iterations; i++) {
+      const quiz = new OpenQuizzer();
+      quiz.loadProblems([...problems], 0, {}, tracking);
+      quiz.start();
+      if (quiz.problem.id === "heavy") heavyFirst++;
+    }
+
+    // heavy has weight ~2.0, light has weight ~1.0
+    // So heavy should appear first roughly 2/3 of the time
+    assert.ok(
+      heavyFirst > 50,
+      `heavy should be first most of the time, got ${heavyFirst}/${iterations}`,
+    );
+  });
+
+  it("loadProblems without tracking works as before (backward-compatible)", () => {
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems([mcProblem("m1"), mcProblem("m2")]);
+    quiz.start();
+    assert.equal(quiz.state, "practicing");
+    assert.equal(quiz.progress.total, 2);
+  });
+
+  it("retry with tracking recomputes weights", () => {
+    const tracking = {
+      m1: { seen: 10, correct: 0, lastSeen: "2025-06-01T11:00:00Z" },
+      m2: { seen: 10, correct: 10, lastSeen: "2025-06-01T11:00:00Z" },
+    };
+    const quiz = new OpenQuizzer();
+    quiz.loadProblems(
+      [mcProblem("m1", 0), mcProblem("m2", 1)],
+      0,
+      {},
+      tracking,
+    );
+    quiz.start();
+    quiz.selectOption(quiz.problem.correct);
+    quiz.next();
+    quiz.selectOption(quiz.problem.correct);
+    quiz.next(); // complete
+    quiz.retry();
+    assert.equal(quiz.state, "practicing");
+    assert.equal(quiz.progress.total, 2);
+  });
+});
+
+// =============================================
 // index.html UI wiring contracts
 // =============================================
 //
@@ -1900,7 +2509,17 @@ describe("index.html UI wiring contracts", () => {
       "exportAllHistory",
       "renderHistorySummary",
       "renderTrendSection",
-      "renderMostMissed",
+      "renderWeakestAreas",
+      // v2.9 — Timer
+      "startTimer",
+      "clearTimer",
+      // v2.9 — Resume
+      "loadInProgressSnapshot",
+      "clearInProgressSnapshot",
+      // v2.9 — Per-problem tracking
+      "loadProblemTracking",
+      "saveProblemTracking",
+      "clearProblemTracking",
     ];
 
     for (const name of requiredFunctions) {
@@ -1929,6 +2548,7 @@ describe("index.html UI wiring contracts", () => {
       "orderingResult",
       "complete",
       "skip",
+      "timeout",
     ];
 
     for (const event of requiredEvents) {
@@ -1952,6 +2572,10 @@ describe("index.html UI wiring contracts", () => {
       "validateSessionSummary",
       "deduplicateSessions",
       "computeAggregateStats",
+      "updateProblemTracking",
+      "computeProficiency",
+      "computeWeakestAreas",
+      "computeSRWeights",
     ];
 
     for (const name of requiredImports) {
@@ -2067,6 +2691,13 @@ describe("index.html UI wiring contracts", () => {
       // Detailed explanation
       "feedback-detail-toggle",
       "feedback-detail",
+      // v2.9 — Timer
+      "timer-display",
+      "timed-out-label",
+      // v2.9 — Resume
+      "resume-prompt",
+      "resume-yes-btn",
+      "resume-no-btn",
     ];
 
     for (const id of requiredIds) {
@@ -2136,6 +2767,20 @@ describe("index.html UI wiring contracts", () => {
       assert.ok(
         script.includes("references-list"),
         "missing references-list class — references will not render",
+      );
+    });
+  });
+
+  // -----------------------------------------
+  // beforeunload handler
+  // -----------------------------------------
+
+  describe("beforeunload handler", () => {
+    it("registers beforeunload event listener", () => {
+      const pattern = /addEventListener\(\s*"beforeunload"/;
+      assert.ok(
+        pattern.test(script),
+        'missing addEventListener("beforeunload") — in-progress sessions will not be saved',
       );
     });
   });

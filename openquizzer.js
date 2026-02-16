@@ -25,8 +25,12 @@ function shuffleArray(array) {
  * Shuffle problems so question types are evenly distributed rather than
  * clustered together. Higher-weight types get picked more often from
  * their pool, producing a balanced mix across the session.
+ *
+ * Optional problemWeights: { [problemId]: number } — per-problem
+ * multiplier that biases selection within a type queue. Used by
+ * spaced repetition to surface weak problems more often.
  */
-function weightedShuffle(problems, typeWeights) {
+function weightedShuffle(problems, typeWeights, problemWeights = {}) {
   const byType = {};
   problems.forEach((p) => {
     const type = p.type || "multiple-choice";
@@ -53,12 +57,25 @@ function weightedShuffle(problems, typeWeights) {
 
     if (totalWeight === 0) break;
 
+    // Pick a type queue weighted by typeWeights
     let rand = Math.random() * totalWeight;
     for (const q of typeQueues) {
       if (q.items.length === 0) continue;
       rand -= q.weight;
       if (rand <= 0) {
-        result.push(q.items.shift());
+        // Within this type queue, pick an item weighted by problemWeights
+        const itemWeights = q.items.map((item) => problemWeights[item.id] || 1);
+        const itemTotalWeight = itemWeights.reduce((a, b) => a + b, 0);
+        let itemRand = Math.random() * itemTotalWeight;
+        let pickedIndex = 0;
+        for (let i = 0; i < itemWeights.length; i++) {
+          itemRand -= itemWeights[i];
+          if (itemRand <= 0) {
+            pickedIndex = i;
+            break;
+          }
+        }
+        result.push(q.items.splice(pickedIndex, 1)[0]);
         break;
       }
     }
@@ -153,6 +170,7 @@ export function computeAggregateStats(sessions) {
   let totalAnswered = 0;
   let totalCorrect = 0;
   let totalSkipped = 0;
+  let totalTimedOut = 0;
 
   const byType = {};
   const byTag = {};
@@ -164,6 +182,7 @@ export function computeAggregateStats(sessions) {
     totalAnswered += session.score.total;
     totalCorrect += session.score.correct;
     totalSkipped += session.score.skipped || 0;
+    totalTimedOut += session.score.timedOut || 0;
 
     // byType from breakdownByType
     if (session.breakdownByType) {
@@ -202,7 +221,7 @@ export function computeAggregateStats(sessions) {
     // mostMissed: track per-problem stats
     if (Array.isArray(session.results)) {
       for (const result of session.results) {
-        if (result.skipped) continue;
+        if (result.skipped || result.timedOut) continue;
         if (!problemStats[result.id]) {
           problemStats[result.id] = {
             id: result.id,
@@ -262,6 +281,7 @@ export function computeAggregateStats(sessions) {
     overallPercentage:
       totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0,
     totalSkipped,
+    totalTimedOut,
     byType,
     byTag,
     byUnit,
@@ -269,6 +289,99 @@ export function computeAggregateStats(sessions) {
     trend,
     mostMissed,
   };
+}
+
+/**
+ * Compute a proficiency score (0–1) from a problem's tracking entry.
+ *
+ * Formula: accuracy × confidence + 0.5 × (1 − confidence)
+ *   where confidence = e^(−0.1 × daysSinceLastSeen)
+ *
+ * Decays toward 0.5 (uncertain) over time, so stale knowledge
+ * gets pushed toward review even if historically accurate.
+ */
+export function computeProficiency(trackingEntry, now) {
+  if (!trackingEntry || trackingEntry.seen === 0 || !trackingEntry.lastSeen) {
+    return 0.5; // unknown = neutral
+  }
+  const accuracy = trackingEntry.correct / trackingEntry.seen;
+  const daysSince =
+    (new Date(now).getTime() - new Date(trackingEntry.lastSeen).getTime()) /
+    86400000;
+  const confidence = Math.exp(-0.1 * daysSince);
+  return accuracy * confidence + 0.5 * (1 - confidence);
+}
+
+/**
+ * Return the weakest problems sorted by proficiency ascending.
+ *
+ * Replaces "most missed" with a recency-aware ranking:
+ * a problem answered correctly long ago scores lower than one
+ * answered correctly yesterday.
+ */
+export function computeWeakestAreas(
+  problemTracking,
+  problemsById,
+  limit = 10,
+  now = new Date(),
+) {
+  const entries = [];
+  for (const [id, entry] of Object.entries(problemTracking)) {
+    if (entry.seen === 0) continue;
+    const problem = problemsById[id];
+    entries.push({
+      id,
+      question: problem ? problem.question || "" : "",
+      proficiency: computeProficiency(entry, now),
+      seen: entry.seen,
+      correct: entry.correct,
+    });
+  }
+  entries.sort((a, b) => a.proficiency - b.proficiency);
+  return entries.slice(0, limit);
+}
+
+/**
+ * Compute per-problem spaced-repetition weights for shuffle bias.
+ *
+ * Weight = 2 − proficiency (range 1.0–2.0).
+ * Unseen problems get 1.5 (slightly favored over mastered ones).
+ * All problems keep weight ≥ 1.0, so nothing is ever excluded.
+ */
+export function computeSRWeights(problems, problemTracking, now) {
+  const weights = {};
+  for (const problem of problems) {
+    const entry = problemTracking[problem.id];
+    if (!entry) {
+      weights[problem.id] = 1.5; // unseen — slightly favor
+    } else {
+      weights[problem.id] = 2 - computeProficiency(entry, now);
+    }
+  }
+  return weights;
+}
+
+export function updateProblemTracking(existingTracking, sessionSummary) {
+  const tracking = {};
+  // Copy existing entries
+  if (existingTracking) {
+    for (const [id, entry] of Object.entries(existingTracking)) {
+      tracking[id] = { ...entry };
+    }
+  }
+  // Update from session results
+  if (sessionSummary && Array.isArray(sessionSummary.results)) {
+    for (const result of sessionSummary.results) {
+      if (result.skipped || result.timedOut) continue;
+      if (!tracking[result.id]) {
+        tracking[result.id] = { seen: 0, correct: 0, lastSeen: null };
+      }
+      tracking[result.id].seen++;
+      if (result.correct) tracking[result.id].correct++;
+      tracking[result.id].lastSeen = sessionSummary.timestamp;
+    }
+  }
+  return tracking;
 }
 
 export class OpenQuizzer {
@@ -284,6 +397,7 @@ export class OpenQuizzer {
   #currentIndex = 0;
   #answers = [];
   #context = {};
+  #problemTracking = null; // for spaced repetition across retry()
 
   // Per-question state
   #answered = false;
@@ -334,15 +448,17 @@ export class OpenQuizzer {
   }
 
   get score() {
-    const answered = this.#answers.filter((a) => !a.skipped);
+    const answered = this.#answers.filter((a) => !a.skipped && !a.timedOut);
     const correct = answered.filter((a) => a.correct).length;
     const total = answered.length;
-    const skipped = this.#answers.length - total;
+    const skipped = this.#answers.filter((a) => a.skipped).length;
+    const timedOut = this.#answers.filter((a) => a.timedOut).length;
     return {
       correct,
       total,
       percentage: total > 0 ? Math.round((correct / total) * 100) : 0,
       skipped,
+      timedOut,
     };
   }
 
@@ -377,6 +493,7 @@ export class OpenQuizzer {
         total: score.total,
         percentage: score.percentage,
         skipped: score.skipped,
+        timedOut: score.timedOut,
       },
       results,
       breakdownByType: this.#computeTypeBreakdown(),
@@ -386,11 +503,25 @@ export class OpenQuizzer {
 
   // --- Lifecycle ---
 
-  loadProblems(problems, maxProblems = 0, context = {}) {
+  loadProblems(
+    problems,
+    maxProblems = 0,
+    context = {},
+    problemTracking = null,
+  ) {
     this.#allProblems = [...problems];
     this.#maxProblems = maxProblems;
     this.#context = { ...context };
-    this.#problems = weightedShuffle([...problems], this.#typeWeights);
+    this.#problemTracking = problemTracking;
+
+    const srWeights = problemTracking
+      ? computeSRWeights(problems, problemTracking, new Date())
+      : {};
+    this.#problems = weightedShuffle(
+      [...problems],
+      this.#typeWeights,
+      srWeights,
+    );
     this.#applyMaxProblems();
 
     this.#currentIndex = 0;
@@ -419,7 +550,14 @@ export class OpenQuizzer {
   }
 
   retry() {
-    this.#problems = weightedShuffle([...this.#allProblems], this.#typeWeights);
+    const srWeights = this.#problemTracking
+      ? computeSRWeights(this.#allProblems, this.#problemTracking, new Date())
+      : {};
+    this.#problems = weightedShuffle(
+      [...this.#allProblems],
+      this.#typeWeights,
+      srWeights,
+    );
     this.#applyMaxProblems();
 
     this.#currentIndex = 0;
@@ -436,6 +574,7 @@ export class OpenQuizzer {
     this.#currentIndex = 0;
     this.#answers = [];
     this.#context = {};
+    this.#problemTracking = null;
     this.#resetQuestionState();
     this.#setState("idle");
   }
@@ -572,6 +711,63 @@ export class OpenQuizzer {
       correct: false,
     });
     this.#emit("skip", {
+      problemId: problem.id,
+      index: this.#currentIndex,
+      total: this.#problems.length,
+    });
+    if (this.#currentIndex < this.#problems.length - 1) {
+      this.#currentIndex++;
+      this.#emitCurrentQuestion();
+    } else {
+      this.#complete();
+    }
+  }
+
+  // --- Snapshot / Resume ---
+
+  getSnapshot() {
+    return {
+      problems: this.#problems.map((p) => ({ ...p })),
+      allProblems: this.#allProblems.map((p) => ({ ...p })),
+      answers: this.#answers.map((a) => ({ ...a })),
+      context: { ...this.#context },
+      maxProblems: this.#maxProblems,
+    };
+  }
+
+  restoreSession(snapshot) {
+    this.#problems = snapshot.problems.map((p) => ({ ...p }));
+    this.#allProblems = snapshot.allProblems.map((p) => ({ ...p }));
+    this.#answers = snapshot.answers.map((a) => ({ ...a }));
+    this.#context = { ...snapshot.context };
+    this.#maxProblems = snapshot.maxProblems;
+    this.#currentIndex = this.#answers.length;
+    this.#resetQuestionState();
+    this.#setState("idle");
+  }
+
+  resume() {
+    if (this.#state !== "idle") return;
+    if (this.#problems.length === 0) return;
+    if (this.#currentIndex >= this.#problems.length) {
+      // All problems already answered — go straight to complete
+      this.#setState("practicing");
+      this.#complete();
+      return;
+    }
+    this.#setState("practicing");
+    this.#emitCurrentQuestion();
+  }
+
+  timeout() {
+    if (this.#state !== "practicing") return;
+    const problem = this.#problems[this.#currentIndex];
+    this.#answers.push({
+      problemId: problem.id,
+      timedOut: true,
+      correct: false,
+    });
+    this.#emit("timeout", {
       problemId: problem.id,
       index: this.#currentIndex,
       total: this.#problems.length,
@@ -733,7 +929,7 @@ export class OpenQuizzer {
   #computeTypeBreakdown() {
     const breakdown = {};
     for (const [i, answer] of this.#answers.entries()) {
-      if (answer.skipped) continue;
+      if (answer.skipped || answer.timedOut) continue;
       const type = this.#problems[i]?.type || "multiple-choice";
       if (!breakdown[type]) breakdown[type] = { correct: 0, total: 0 };
       breakdown[type].total++;
@@ -749,7 +945,7 @@ export class OpenQuizzer {
   #computeTagBreakdown() {
     const breakdown = {};
     for (const [i, answer] of this.#answers.entries()) {
-      if (answer.skipped) continue;
+      if (answer.skipped || answer.timedOut) continue;
       const tags = this.#problems[i]?.tags || [];
       for (const tag of tags) {
         if (!breakdown[tag]) breakdown[tag] = { correct: 0, total: 0 };
@@ -800,6 +996,10 @@ export class OpenQuizzer {
 
     if (answer.skipped) {
       return { ...base, skipped: true, userAnswer: null, correctAnswer: null };
+    }
+
+    if (answer.timedOut) {
+      return { ...base, timedOut: true, userAnswer: null, correctAnswer: null };
     }
 
     switch (type) {

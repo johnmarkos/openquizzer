@@ -34,12 +34,17 @@ Enrich the results page with actionable feedback computed entirely from the curr
 - [x] **Session summary includes context** — Extend `getSessionSummary()` to include chapter title, unit title, and per-problem tags. Makes summaries self-describing so they can be aggregated later without needing the original content files.
 - [x] **Skip button** — Skip a problem without penalty. Tracked separately in results (skipped vs. wrong vs. correct). Skipped count shown on results page.
 
-## Next (v2.9: Per-Problem Tracking & Spaced Repetition)
+## Done (v2.9 Batch 1: Timed Mode, Resume, Per-Problem Tracking)
 
-- [ ] **Per-problem tracking** — Track each problem's history across sessions (seen count, correct count, last seen timestamp). Foundation for spaced repetition.
-- [ ] **Elo-style proficiency scores** — Compute a proficiency rating per area (chapter, unit, tag) from per-problem history. Accounts for problem difficulty and recency — getting a hard problem wrong hurts less than getting an easy one wrong, and recent sessions weigh more than old ones. Displayed on the aggregate dashboard so users can see where they are and where to focus.
-- [ ] **Basic spaced repetition** — Weight problem selection by past performance. Problems the user got wrong appear more frequently in future sessions.
-- [ ] **Resume interrupted sessions** — Save in-progress state on page unload, offer to resume on next load.
+- [x] **Timed mode** — Optional `CONFIG.timeLimit` (seconds per question). Countdown timer in practice header with warning at 25% remaining. Auto-calls `timeout()` when time expires. Timed-out problems excluded from score/breakdowns (same treatment as skipped). Timer clears on answer, skip, timeout, quit, and complete.
+- [x] **Resume interrupted sessions** — `beforeunload` saves in-progress snapshot to localStorage. On next load, resume prompt shows context (chapter, progress). `getSnapshot()`/`restoreSession()`/`resume()` engine methods with defensive copies. Snapshot cleared on complete, back-to-menu, and clear-history.
+- [x] **Per-problem tracking** — `updateProblemTracking()` pure function computes `{ seen, correct, lastSeen }` per problem ID across sessions. Skipped/timed-out results excluded. Persisted to localStorage, updated on session complete. Dashboard integration deferred.
+
+## Done (v2.9 Batch 2: Spaced Repetition & Proficiency)
+
+- [x] **Proficiency scores** — `computeProficiency()` computes accuracy × recency-confidence score (0–1) per problem. Decays toward 0.5 over time so stale knowledge gets pushed toward review. `computeWeakestAreas()` returns lowest-proficiency problems for the dashboard.
+- [x] **Spaced repetition weights** — `computeSRWeights()` computes per-problem weight (1.0–2.0) based on proficiency. `weightedShuffle` accepts optional `problemWeights` to bias within-type selection. `loadProblems`/`retry` pass tracking through automatically.
+- [x] **Dashboard: Weakest Areas** — Replaced "Most Missed" with proficiency-aware "Weakest areas" section. Shows proficiency percentage and attempt counts. Problem metadata collected during chapter loads for display.
 
 ## Future (v3.0: File Import/Export & Advanced Features)
 
@@ -50,12 +55,11 @@ Enrich the results page with actionable feedback computed entirely from the curr
 - [ ] **Matching / Connect pairs** — Two columns, user draws connections between items. Mobile UX: tap one from each column to pair them
 - [ ] **Adaptive difficulty** — Use Elo proficiency scores (v2.9) to drive problem selection: target weak areas, avoid over-drilling mastered topics
 - [ ] **Offline support** — Service worker for full offline functionality
-- [ ] **Timed mode** — Optional countdown per problem for interview pressure simulation
 - [ ] **Streak tracking** — Daily practice streaks with visual indicator
 
 ## Requested by Instances (Post-v3.0 Candidates)
 
-- [ ] **Content QA lint command** — Add a zero-dependency `node` script that scans content for quality risks before publish: duplicate stems within a chapter, single-answer multi-selects, repeated explanation templates, missing/invalid references, and suspicious artifact text. Output should be machine-readable (JSON) plus a concise terminal summary.
+- [x] **Content QA lint command** — `node content-lint.js` scans `content/*.json` for quality risks: structural validation, duplicate IDs/stems, single-answer multi-selects, repeated explanations, missing/invalid references, suspicious artifact text. Supports `--json` for machine-readable output.
 - [ ] **Interview case mode (linked prompts)** — Support a single evolving case with 4-8 linked prompts where new constraints appear mid-session (e.g., "traffic spike", "compliance requirement"). Preserve context across prompts and score both correctness and adaptation quality.
 - [ ] **Confidence capture + calibration metrics** — Optional confidence input per answer (e.g., low/medium/high) and dashboard metrics that compare confidence vs correctness to expose overconfidence and guide review priority.
 - [ ] **Blueprint coverage planner** — Allow instances to define target coverage weights (tags/units/chapters) and report under-practiced areas directly in the dashboard so users can train to an interview blueprint instead of random volume.

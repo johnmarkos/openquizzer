@@ -7,6 +7,7 @@ export const CONFIG = {
   description:
     "A fast, mobile-friendly quiz app. Edit config.js and add content JSON files to make it yours.",
   // maxProblems: 10, // Optional: Limit "Practice All" sessions to this many problems
+  // timeLimit: 30, // Optional: Seconds per question for timed mode (0 or omit = disabled)
   // Optional: weighted probability for question types (default: 1)
   // typeWeights: {
   //   "multiple-choice": 1,
