@@ -5,7 +5,7 @@
     "setup-hooks": "git config core.hooksPath .githooks",
     "prepare": "npm run setup-hooks",
     "test": "node --test openquizzer.test.js",
-    "lint:content": "node content-lint.js",
+    "lint:content": "node content-lint.cjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

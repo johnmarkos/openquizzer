@@ -1,9 +1,15 @@
 # Changelog
 
+## Linter Portability Fix
+
+- **Renamed `content-lint.js` → `content-lint.cjs`** — Explicit CommonJS extension works in both CJS and ESM instance repos without patching. Instances no longer need to modify the linter after copying.
+- **Two-stage `question` no longer required at top level** — Two-stage problems legitimately have questions on stages only. The linter now requires `question` only for non-two-stage types. Stage-level `question` validation unchanged.
+- Updated `package.json` `lint:content` script to reference new filename.
+
 ## v2.9 Batch 2 Review Fixes (Pass 3)
 
 - **Problem metadata persistence** — `allProblemsById` now saved to localStorage on chapter load and restored on page init. Weakest-areas dashboard shows question previews even when the user navigates directly to the dashboard without loading chapters first. Cleared alongside other history data.
-- **Lint templated-phrase detection** — `content-lint.js` now detects chapters where a high fraction of explanations share the same opening phrase (>=30% of problems), flagging likely generated/templated language. Configurable thresholds.
+- **Lint templated-phrase detection** — `content-lint.cjs` now detects chapters where a high fraction of explanations share the same opening phrase (>=30% of problems), flagging likely generated/templated language. Configurable thresholds.
 - Added 3 new wiring tests — **253 total tests**, all passing.
 
 ## v2.9 Batch 2 Review Fixes (Pass 2)
@@ -11,7 +17,7 @@
 - **Proficiency/SR clamping** — `daysSince` clamped to >= 0, proficiency output clamped to [0, 1], SR weights clamped to [1, 2]. Prevents future timestamps (clock skew, manual import) from producing out-of-range values.
 - **Two-stage weakest-areas fallback** — Metadata collector uses `p.question || p.stages?.[0]?.question || ""` so two-stage problems show meaningful preview text in the dashboard instead of empty strings.
 - **Two-stage reference fallback** — Final two-stage feedback emits `stage.references || problem.references`, falling back to problem-level references when the stage has none.
-- **Lint repeated-word check** — `content-lint.js` now detects case-insensitive adjacent duplicate words ("For For", "Apply apply") with an allowlist for legitimate doubles ("had had", "that that").
+- **Lint repeated-word check** — `content-lint.cjs` now detects case-insensitive adjacent duplicate words ("For For", "Apply apply") with an allowlist for legitimate doubles ("had had", "that that").
 - Added 3 new tests (2 future-timestamp clamping, 1 reference fallback) — **250 total tests**, all passing.
 
 ## v2.9 Batch 2: Proficiency Scores & Spaced Repetition
@@ -80,7 +86,7 @@
 
 ## Content QA Lint Script
 
-- Added **`content-lint.js`** — zero-dependency Node CLI that scans `content/*.json` for quality risks before publish
+- Added **`content-lint.cjs`** — zero-dependency Node CLI that scans `content/*.json` for quality risks before publish
 - **7 checks:** structural validation (required fields, bounds), duplicate problem IDs (within and across chapters), duplicate question stems, single-correct multi-selects, repeated explanation templates, missing/invalid references, suspicious artifact text (TODO, FIXME, placeholder patterns)
 - **Two output modes:** concise terminal summary (default) or machine-readable JSON (`--json` flag)
 - Exit code 0 when clean, 1 when issues found

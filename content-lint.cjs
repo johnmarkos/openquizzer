@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * content-lint.js — Zero-dependency content quality linter for OpenQuizzer.
+ * content-lint.cjs — Zero-dependency content quality linter for OpenQuizzer.
  *
  * Scans content/*.json for structural issues, duplicates, and suspicious text.
  *
  * Usage:
- *   node content-lint.js           # terminal summary
- *   node content-lint.js --json    # machine-readable JSON to stdout
+ *   node content-lint.cjs           # terminal summary
+ *   node content-lint.cjs --json    # machine-readable JSON to stdout
  *
  * Exit codes:
  *   0 — no issues found
@@ -62,8 +62,9 @@ function addIssue(severity, file, problemId, check, message) {
 
 // ── Structural Validation ──────────────────────────────────────────────────
 
-/** Required top-level fields for every problem. */
+/** Required top-level fields for every problem (two-stage excludes "question"). */
 const BASE_REQUIRED = ["id", "type", "question"];
+const BASE_REQUIRED_TWO_STAGE = ["id", "type"];
 
 /** Type-specific required fields. */
 const TYPE_REQUIRED = {
@@ -79,8 +80,10 @@ const VALID_TYPES = Object.keys(TYPE_REQUIRED);
 function validateStructure(problem, file) {
   const pid = problem.id || "(no id)";
 
-  // Base fields
-  for (const field of BASE_REQUIRED) {
+  // Base fields (two-stage problems don't require top-level "question")
+  const required =
+    problem.type === "two-stage" ? BASE_REQUIRED_TWO_STAGE : BASE_REQUIRED;
+  for (const field of required) {
     if (problem[field] === undefined || problem[field] === null) {
       addIssue(
         "error",
