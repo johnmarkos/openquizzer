@@ -2550,6 +2550,10 @@ describe("index.html UI wiring contracts", () => {
       // v2.9 — Resume
       "loadInProgressSnapshot",
       "clearInProgressSnapshot",
+      // v2.9 — Problem metadata persistence
+      "loadProblemMetadata",
+      "saveProblemMetadata",
+      "clearProblemMetadata",
       // v2.9 — Per-problem tracking
       "loadProblemTracking",
       "saveProblemTracking",

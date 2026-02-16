@@ -1,6 +1,11 @@
 # Changelog
 
-## v2.9 Batch 2 Review Fixes
+## v2.9 Batch 2 Review Fixes (Pass 3)
+
+- **Problem metadata persistence** — `allProblemsById` now saved to localStorage on chapter load and restored on page init. Weakest-areas dashboard shows question previews even when the user navigates directly to the dashboard without loading chapters first. Cleared alongside other history data.
+- Added 3 new wiring tests — **253 total tests**, all passing.
+
+## v2.9 Batch 2 Review Fixes (Pass 2)
 
 - **Proficiency/SR clamping** — `daysSince` clamped to >= 0, proficiency output clamped to [0, 1], SR weights clamped to [1, 2]. Prevents future timestamps (clock skew, manual import) from producing out-of-range values.
 - **Two-stage weakest-areas fallback** — Metadata collector uses `p.question || p.stages?.[0]?.question || ""` so two-stage problems show meaningful preview text in the dashboard instead of empty strings.

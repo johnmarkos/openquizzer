@@ -1498,6 +1498,7 @@
               type: p.type || "multiple-choice",
             };
           }
+          saveProblemMetadata();
 
           const chapterTitle = `All ${unit.title}`;
           const chapterDescription = `${allProblems.length} problems from ${readyChapters.length} chapters`;
@@ -1549,6 +1550,7 @@
               type: p.type || "multiple-choice",
             };
           }
+          saveProblemMetadata();
 
           // Extract unit/chapter IDs from the "unit-N-chapter-M" string
           const match = chapterId.match(/unit-(\d+)-chapter-(\d+)/);
@@ -2098,6 +2100,42 @@
       }
 
       // =============================================
+      // Problem metadata persistence (for weakest-areas question previews)
+      // =============================================
+
+      function loadProblemMetadata() {
+        try {
+          const key =
+            (CONFIG.storageKey || "openquizzer-sessions") + "-metadata";
+          const raw = localStorage.getItem(key);
+          if (!raw) return {};
+          return JSON.parse(raw) || {};
+        } catch {
+          return {};
+        }
+      }
+
+      function saveProblemMetadata() {
+        try {
+          const key =
+            (CONFIG.storageKey || "openquizzer-sessions") + "-metadata";
+          localStorage.setItem(key, JSON.stringify(allProblemsById));
+        } catch {
+          /* quota exceeded or disabled — silent fail */
+        }
+      }
+
+      function clearProblemMetadata() {
+        try {
+          const key =
+            (CONFIG.storageKey || "openquizzer-sessions") + "-metadata";
+          localStorage.removeItem(key);
+        } catch {
+          /* silent */
+        }
+      }
+
+      // =============================================
       // Per-problem tracking persistence
       // =============================================
 
@@ -2387,9 +2425,11 @@
         }
         sessionHistory = [];
         problemTracking = {};
+        allProblemsById = {};
         clearLocalStorage();
         clearInProgressSnapshot();
         clearProblemTracking();
+        clearProblemMetadata();
         hideDashboard();
       }
 
@@ -2921,6 +2961,7 @@
       renderUnitList();
       sessionHistory = loadFromLocalStorage();
       problemTracking = loadProblemTracking();
+      allProblemsById = loadProblemMetadata();
       renderHistorySummary();
 
       // Check for in-progress snapshot to offer resume
