@@ -749,6 +749,19 @@ describe("references", () => {
     quiz.selectOption(1); // stage 2 (final)
     assert.deepEqual(events[0].references, sampleRefs);
   });
+
+  it("two-stage falls back to problem-level references when stage has none", () => {
+    const quiz = new OpenQuizzer();
+    const problem = twoStageProblem("ts1");
+    // Set problem-level references but no stage-level references
+    problem.references = sampleRefs;
+    quiz.loadProblems([problem]);
+    quiz.start();
+    const events = collectEvents(quiz, "optionSelected");
+    quiz.selectOption(0); // stage 1
+    quiz.selectOption(1); // stage 2 (final)
+    assert.deepEqual(events[0].references, sampleRefs);
+  });
 });
 
 // =============================================
@@ -2279,6 +2292,14 @@ describe("computeProficiency", () => {
   it("null entry → 0.5", () => {
     assert.equal(computeProficiency(null, new Date()), 0.5);
   });
+
+  it("future lastSeen (clock skew) → clamped to [0, 1]", () => {
+    // lastSeen is in the future relative to now
+    const entry = { seen: 10, correct: 10, lastSeen: "2026-01-01T00:00:00Z" };
+    const now = new Date("2025-06-01T12:00:00Z"); // 6 months before lastSeen
+    const score = computeProficiency(entry, now);
+    assert.ok(score >= 0 && score <= 1, `expected [0, 1], got ${score}`);
+  });
 });
 
 // =============================================
@@ -2376,6 +2397,19 @@ describe("computeSRWeights", () => {
     for (const [id, w] of Object.entries(weights)) {
       assert.ok(w >= 1.0 && w <= 2.0, `weight for ${id} = ${w} out of range`);
     }
+  });
+
+  it("future lastSeen (clock skew) → weights still in [1.0, 2.0]", () => {
+    const now = new Date("2025-06-01T12:00:00Z");
+    const problems = [mcProblem("future")];
+    const tracking = {
+      future: { seen: 10, correct: 10, lastSeen: "2026-01-01T00:00:00Z" },
+    };
+    const weights = computeSRWeights(problems, tracking, now);
+    assert.ok(
+      weights.future >= 1.0 && weights.future <= 2.0,
+      `weight = ${weights.future} out of range`,
+    );
   });
 });
 

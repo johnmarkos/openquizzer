@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.9 Batch 2 Review Fixes
+
+- **Proficiency/SR clamping** — `daysSince` clamped to >= 0, proficiency output clamped to [0, 1], SR weights clamped to [1, 2]. Prevents future timestamps (clock skew, manual import) from producing out-of-range values.
+- **Two-stage weakest-areas fallback** — Metadata collector uses `p.question || p.stages?.[0]?.question || ""` so two-stage problems show meaningful preview text in the dashboard instead of empty strings.
+- **Two-stage reference fallback** — Final two-stage feedback emits `stage.references || problem.references`, falling back to problem-level references when the stage has none.
+- **Lint repeated-word check** — `content-lint.js` now detects case-insensitive adjacent duplicate words ("For For", "Apply apply") with an allowlist for legitimate doubles ("had had", "that that").
+- Added 3 new tests (2 future-timestamp clamping, 1 reference fallback) — **250 total tests**, all passing.
+
 ## v2.9 Batch 2: Proficiency Scores & Spaced Repetition
 
 ### Proficiency Scores

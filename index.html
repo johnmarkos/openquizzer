@@ -1493,7 +1493,7 @@
           for (const p of allProblems) {
             allProblemsById[p.id] = {
               id: p.id,
-              question: p.question || "",
+              question: p.question || p.stages?.[0]?.question || "",
               tags: p.tags || [],
               type: p.type || "multiple-choice",
             };
@@ -1544,7 +1544,7 @@
           for (const p of data.problems) {
             allProblemsById[p.id] = {
               id: p.id,
-              question: p.question || "",
+              question: p.question || p.stages?.[0]?.question || "",
               tags: p.tags || [],
               type: p.type || "multiple-choice",
             };

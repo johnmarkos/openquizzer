@@ -305,11 +305,17 @@ export function computeProficiency(trackingEntry, now) {
     return 0.5; // unknown = neutral
   }
   const accuracy = trackingEntry.correct / trackingEntry.seen;
-  const daysSince =
+  // Clamp daysSince to >= 0 to guard against future timestamps (clock skew, manual import)
+  const daysSince = Math.max(
+    0,
     (new Date(now).getTime() - new Date(trackingEntry.lastSeen).getTime()) /
-    86400000;
+      86400000,
+  );
   const confidence = Math.exp(-0.1 * daysSince);
-  return accuracy * confidence + 0.5 * (1 - confidence);
+  return Math.min(
+    1,
+    Math.max(0, accuracy * confidence + 0.5 * (1 - confidence)),
+  );
 }
 
 /**
@@ -355,7 +361,11 @@ export function computeSRWeights(problems, problemTracking, now) {
     if (!entry) {
       weights[problem.id] = 1.5; // unseen — slightly favor
     } else {
-      weights[problem.id] = 2 - computeProficiency(entry, now);
+      // Clamp to [1, 2] for safety (computeProficiency is already clamped to [0, 1])
+      weights[problem.id] = Math.min(
+        2,
+        Math.max(1, 2 - computeProficiency(entry, now)),
+      );
     }
   }
   return weights;
@@ -891,7 +901,8 @@ export class OpenQuizzer {
         correctIndex: stage.correct,
         explanation: stage.explanation,
         detailedExplanation: stage.detailedExplanation,
-        references: stage.references,
+        // Stage-level references take priority; fall back to problem-level
+        references: stage.references || problem.references,
         isFinalStage: true,
         allCorrect,
       });

@@ -292,6 +292,63 @@ function checkSuspiciousText(problem, file) {
   }
 }
 
+// ── Repeated-Word Artifacts ───────────────────────────────────────────────
+
+/**
+ * Words that legitimately appear doubled in English and should not be flagged.
+ * Kept deliberately short — only add entries that cause real false positives.
+ */
+const REPEATED_WORD_ALLOWLIST = new Set([
+  "had",
+  "that",
+  "the",
+  "is",
+  "was",
+  "it",
+  "do",
+  "can",
+]);
+
+/**
+ * Detect adjacent duplicate words (case-insensitive) like "For For",
+ * "Apply apply", "No no". These are common LLM generation artifacts.
+ */
+function checkRepeatedWords(problem, file) {
+  const pid = problem.id || "(no id)";
+
+  // Collect all text fields to scan
+  const texts = [];
+  if (problem.question) texts.push(problem.question);
+  if (problem.explanation) texts.push(problem.explanation);
+  if (problem.detailedExplanation) texts.push(problem.detailedExplanation);
+  if (Array.isArray(problem.options)) texts.push(...problem.options);
+  if (Array.isArray(problem.items)) texts.push(...problem.items);
+  if (Array.isArray(problem.stages)) {
+    for (const stage of problem.stages) {
+      if (stage.question) texts.push(stage.question);
+      if (stage.explanation) texts.push(stage.explanation);
+      if (stage.detailedExplanation) texts.push(stage.detailedExplanation);
+      if (Array.isArray(stage.options)) texts.push(...stage.options);
+    }
+  }
+
+  for (const text of texts) {
+    // Match adjacent duplicate words (case-insensitive), word boundary delimited
+    const matches = text.matchAll(/\b(\w+)\s+(\1)\b/gi);
+    for (const match of matches) {
+      const word = match[1].toLowerCase();
+      if (REPEATED_WORD_ALLOWLIST.has(word)) continue;
+      addIssue(
+        "warning",
+        file,
+        pid,
+        "repeated-word",
+        `Repeated word: "${match[0]}"`,
+      );
+    }
+  }
+}
+
 // ── Cross-Problem Checks ──────────────────────────────────────────────────
 
 function checkSingleCorrectMultiSelect(problem, file) {
@@ -387,6 +444,7 @@ function runChecks(chapters) {
       validateReferences(problem, file);
       checkSuspiciousText(problem, file);
       checkSingleCorrectMultiSelect(problem, file);
+      checkRepeatedWords(problem, file);
 
       // ── Duplicate IDs within chapter ──
       if (problem.id) {
