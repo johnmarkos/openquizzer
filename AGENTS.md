@@ -70,6 +70,7 @@ All changes to `main` require a pull request. No direct commits to `main`.
 - **Before opening a PR:** run `npm test`, `npm run format:check`, and the self-review checklist
 - **CI runs on every PR:** checkout → Node 20 → `npm ci` → `npm test` → `npm run format:check` → `npm run lint:content`
 - **Branch protection** is configured in the GitHub UI (require PRs, require CI status check)
+- **Code review:** comment `@codex review` on significant PRs (new features, refactors, multi-file changes, security-sensitive code). Trivial PRs (version bumps, typos, config tweaks, doc-only) can merge after CI passes without a Codex review. Codex reviews have a weekly budget — if we hit the limit, fall back to Claude staff review or skip review for trivial changes.
 
 ## Multi-Model Workflow
 
