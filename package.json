@@ -1,6 +1,7 @@
 {
   "name": "openquizzer",
   "private": true,
+  "type": "module",
   "scripts": {
     "setup-hooks": "git config core.hooksPath .githooks",
     "prepare": "npm run setup-hooks",
