@@ -10,7 +10,7 @@ Supports 5 question types: multiple choice, numeric input, ordering, multi-selec
 
 ## Development
 
-No build system. Edit files directly and push to `main` for deployment.
+No build system. Edit files directly. All changes to `main` go through pull requests (see Branching & Pull Requests).
 
 **Formatting:** Use Prettier standard formatting. Install contributor tooling once with `npm install`, then run `npm run format` before committing.
 
@@ -61,6 +61,44 @@ After completing each milestone, switch to a **reviewer role** and critique your
 Fix issues. Review again. **Iterate until the reviewer finds nothing significant.**
 
 **Escape hatch:** If the same issue recurs or you're uncertain, flag it for human review and move on.
+
+## Branching & Pull Requests
+
+All changes to `main` require a pull request. No direct commits to `main`.
+
+- **Branch naming:** `feat/`, `fix/`, `chore/` prefixes (e.g., `feat/new-question-type`)
+- **Before opening a PR:** run `npm test`, `npm run format:check`, and the self-review checklist
+- **CI runs on every PR:** checkout → Node 20 → `npm ci` → `npm test` → `npm run format:check` → `npm run lint:content`
+- **Branch protection** is configured in the GitHub UI (require PRs, require CI status check)
+
+## Multi-Model Workflow
+
+This project uses multiple AI models with different roles:
+
+- **Claude Opus 4.6** — Staff engineer. Architecture decisions, code review, AGENTS.md maintenance. Does thorough reviews after other models implement features.
+- **GPT / Gemini / other models** — Volume implementation. Picks up tasks from ROADMAP.md or a prepared `TASK.md`, implements them following these guidelines, runs self-review.
+
+### For implementers (any model):
+
+1. Read this entire file before starting
+2. Pick a task from ROADMAP.md or read `TASK.md` if one was prepared for you
+3. No build system — edit files directly. Run `node --test openquizzer.test.js` — must pass
+4. Run `npm run format` before committing
+5. Run the self-review loop (see below) — fix everything found
+6. Update CHANGELOG.md with what you did
+7. Mark the ROADMAP task as done (`[x]`)
+8. Write `HANDOFF.md` in the project root: what was completed, decisions made and why, anything unfinished, gotchas
+
+### For staff reviews (Claude Opus):
+
+1. Read every changed source file — not just diffs
+2. Check all architecture rules: engine/UI boundary, zero-dependency engine, event-driven pattern
+3. Verify test coverage matches current functionality
+4. Check CHANGELOG.md accurately reflects what's in the code
+5. Look for: DOM access in `openquizzer.js`, framework dependencies, UI logic leaking into the engine
+6. Check readability: section headers, doc comments, descriptive names, labeled branches
+7. Review AGENTS.md itself — update Lessons Learned, trim cruft
+8. Flag anything needing a human decision
 
 ## Commit Attribution
 
