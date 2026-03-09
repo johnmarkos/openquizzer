@@ -2,3 +2,10 @@
 *.log
 node_modules/
 .claude/
+
+# Agent handoff and task files (local coordination, not source)
+CLAUDE-HANDOFF.md
+CODEX-HANDOFF.md
+HANDOFF.md
+TASK-*.md
+TASK.md
