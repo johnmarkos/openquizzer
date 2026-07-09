@@ -577,7 +577,7 @@ describe("two-stage", () => {
     assert.equal(quiz.score.correct, 1);
   });
 
-  it("first stage wrong, second right — overall incorrect", () => {
+  it("first stage wrong, second right earns partial credit", () => {
     const quiz = new OpenQuizzer();
     quiz.loadProblems([twoStageProblem("ts1")]);
     quiz.start();
@@ -587,7 +587,19 @@ describe("two-stage", () => {
     quiz.selectOption(1); // stage 2 correct
 
     assert.equal(selected[0].allCorrect, false);
-    assert.equal(quiz.score.correct, 0);
+    assert.equal(selected[0].correct, true);
+    assert.equal(selected[0].credit, 0.5);
+    assert.deepEqual(selected[0].stageResults, [
+      { selected: 1, correct: false },
+      { selected: 1, correct: true },
+    ]);
+    assert.equal(quiz.score.correct, 0.5);
+    assert.equal(quiz.score.percentage, 50);
+
+    const summary = quiz.getSessionSummary();
+    assert.equal(summary.results[0].correct, false);
+    assert.equal(summary.results[0].credit, 0.5);
+    assert.equal(summary.breakdownByType["two-stage"].correct, 0.5);
   });
 
   it("advance payload includes previous answer text", () => {
@@ -2512,6 +2524,8 @@ describe("index.html UI wiring contracts", () => {
       "showError",
       "hideError",
       "hideAllQuestionTypes",
+      "getProblemReportConfig",
+      "renderProblemReporting",
       // Landing/navigation
       "renderUnitList",
       "loadUnit",
@@ -2862,6 +2876,13 @@ describe("index.html UI wiring contracts", () => {
         script.includes("references-list"),
         "missing references-list class — references will not render",
       );
+    });
+
+    it("wires structured reporting to a prefilled GitHub Issue Form", () => {
+      assert.ok(html.includes('id="problem-report"'));
+      assert.ok(script.includes("new URLSearchParams"));
+      assert.ok(script.includes("reportConfig.repository"));
+      assert.ok(script.includes("Report category:"));
     });
   });
 

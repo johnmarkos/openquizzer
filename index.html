@@ -290,6 +290,48 @@
         color: var(--error);
       }
 
+      .feedback.partial {
+        background: var(--accent-alpha);
+        border: 1px solid var(--accent);
+      }
+
+      .feedback.partial .feedback-title {
+        color: var(--accent);
+      }
+
+      .problem-report {
+        margin: 0 0 1rem;
+      }
+
+      .problem-report-summary {
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 0.8rem;
+      }
+
+      .problem-report-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
+      }
+
+      .problem-report-option {
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--text);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.75rem;
+        padding: 0.35rem 0.5rem;
+      }
+
+      .problem-report-option:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
       .detail-toggle {
         display: inline-block;
         background: none;
@@ -1063,6 +1105,15 @@
           </div>
           <span class="problem-id" id="problem-id"></span>
           <p class="question" id="question-text"></p>
+          <details id="problem-report" class="problem-report hidden-container">
+            <summary class="problem-report-summary">
+              Report a problem issue
+            </summary>
+            <div
+              id="problem-report-options"
+              class="problem-report-options"
+            ></div>
+          </details>
 
           <!-- Multiple choice options -->
           <ul class="options" id="options"></ul>
@@ -1263,6 +1314,10 @@
       // Practice view — question area
       const problemIdEl = document.getElementById("problem-id");
       const questionText = document.getElementById("question-text");
+      const problemReport = document.getElementById("problem-report");
+      const problemReportOptions = document.getElementById(
+        "problem-report-options",
+      );
       const optionsEl = document.getElementById("options");
       const feedback = document.getElementById("feedback");
       const feedbackTitle = document.getElementById("feedback-title");
@@ -1400,6 +1455,58 @@
         stageIndicator.classList.add("hidden-container");
         stageContext.classList.add("hidden-container");
         correctAnswerDisplay.classList.add("hidden-container");
+      }
+
+      // =============================================
+      // Structured problem reporting
+      // =============================================
+
+      function getProblemReportConfig() {
+        const config = CONFIG.problemReporting;
+        if (!config || typeof config.repository !== "string") return null;
+        if (
+          !Array.isArray(config.categories) ||
+          config.categories.length === 0
+        ) {
+          return null;
+        }
+        return config;
+      }
+
+      function renderProblemReporting(problem) {
+        const reportConfig = getProblemReportConfig();
+        problemReport.classList.add("hidden-container");
+        problemReport.open = false;
+        problemReportOptions.innerHTML = "";
+
+        if (!reportConfig || !problem.id) return;
+
+        reportConfig.categories.forEach((category) => {
+          if (typeof category !== "string" || !category) return;
+          const button = document.createElement("button");
+          button.className = "problem-report-option";
+          button.type = "button";
+          button.textContent = category;
+          button.addEventListener("click", () => {
+            const title = `[Problem] ${problem.id}: ${category}`;
+            const body = `Problem ID: ${problem.id}\nReport category: ${category}`;
+            const parameters = new URLSearchParams({
+              template: reportConfig.issueTemplate || "problem-report.yml",
+              title,
+              body,
+            });
+            window.open(
+              `https://github.com/${reportConfig.repository}/issues/new?${parameters}`,
+              "_blank",
+              "noopener",
+            );
+          });
+          problemReportOptions.appendChild(button);
+        });
+
+        if (problemReportOptions.childElementCount > 0) {
+          problemReport.classList.remove("hidden-container");
+        }
       }
 
       // =============================================
@@ -1833,10 +1940,14 @@
         explanation,
         detailedExplanation,
         references,
+        title = isCorrect ? "Correct!" : "Incorrect",
+        isPartial = false,
       ) {
-        feedback.classList.add("visible");
-        feedback.classList.add(isCorrect ? "correct" : "incorrect");
-        feedbackTitle.textContent = isCorrect ? "Correct!" : "Incorrect";
+        feedback.classList.add(
+          "visible",
+          isPartial ? "partial" : isCorrect ? "correct" : "incorrect",
+        );
+        feedbackTitle.textContent = title;
         feedbackExplanation.textContent = explanation;
 
         // Reset detailed explanation state
@@ -2561,7 +2672,12 @@
           hideAllQuestionTypes();
           optionsEl.innerHTML = "";
 
-          feedback.classList.remove("visible", "correct", "incorrect");
+          feedback.classList.remove(
+            "visible",
+            "correct",
+            "incorrect",
+            "partial",
+          );
           nextBtn.classList.add("hidden");
           skipBtn.classList.remove("hidden");
 
@@ -2579,6 +2695,7 @@
           } else {
             problemIdEl.style.display = "none";
           }
+          renderProblemReporting(problem);
 
           if (type === "two-stage") {
             renderTwoStageQuestion(problem, 0, null);
@@ -2613,6 +2730,8 @@
           references,
           isFinalStage,
           allCorrect,
+          credit,
+          stageResults,
         }) => {
           clearTimer();
           const buttons = optionsEl.querySelectorAll(".option-btn");
@@ -2631,6 +2750,12 @@
               explanation,
               detailedExplanation,
               references,
+              credit > 0 && !allCorrect
+                ? stageResults.length === 2
+                  ? "Part 2 correct - partial credit"
+                  : `${stageResults.filter((result) => result.correct).length} of ${stageResults.length} parts correct - partial credit`
+                : undefined,
+              credit > 0 && !allCorrect,
             );
           } else {
             showFeedback(correct, explanation, detailedExplanation, references);

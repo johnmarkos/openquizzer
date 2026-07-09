@@ -459,7 +459,11 @@ export class OpenQuizzer {
 
   get score() {
     const answered = this.#answers.filter((a) => !a.skipped && !a.timedOut);
-    const correct = answered.filter((a) => a.correct).length;
+    const correct = answered.reduce(
+      (totalCredit, answer) =>
+        totalCredit + (answer.credit ?? (answer.correct ? 1 : 0)),
+      0,
+    );
     const total = answered.length;
     const skipped = this.#answers.filter((a) => a.skipped).length;
     const timedOut = this.#answers.filter((a) => a.timedOut).length;
@@ -892,6 +896,9 @@ export class OpenQuizzer {
         problemId: problem.id,
         stageAnswers: [...this.#twoStageAnswers],
         correct: allCorrect,
+        credit:
+          this.#twoStageAnswers.filter((answer) => answer.correct).length /
+          problem.stages.length,
       });
 
       this.#setState("answered");
@@ -905,6 +912,10 @@ export class OpenQuizzer {
         references: stage.references || problem.references,
         isFinalStage: true,
         allCorrect,
+        credit:
+          this.#twoStageAnswers.filter((answer) => answer.correct).length /
+          problem.stages.length,
+        stageResults: [...this.#twoStageAnswers],
       });
     }
   }
@@ -944,7 +955,7 @@ export class OpenQuizzer {
       const type = this.#problems[i]?.type || "multiple-choice";
       if (!breakdown[type]) breakdown[type] = { correct: 0, total: 0 };
       breakdown[type].total++;
-      if (answer.correct) breakdown[type].correct++;
+      breakdown[type].correct += answer.credit ?? (answer.correct ? 1 : 0);
     }
     for (const entry of Object.values(breakdown)) {
       entry.percentage =
@@ -961,7 +972,7 @@ export class OpenQuizzer {
       for (const tag of tags) {
         if (!breakdown[tag]) breakdown[tag] = { correct: 0, total: 0 };
         breakdown[tag].total++;
-        if (answer.correct) breakdown[tag].correct++;
+        breakdown[tag].correct += answer.credit ?? (answer.correct ? 1 : 0);
       }
     }
     for (const entry of Object.values(breakdown)) {
@@ -1002,6 +1013,7 @@ export class OpenQuizzer {
       type,
       question: problem.question || "",
       correct: answer.correct,
+      credit: answer.credit ?? (answer.correct ? 1 : 0),
       tags: problem.tags || [],
     };
 

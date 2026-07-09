@@ -202,6 +202,25 @@ Set `timeLimit` to add a fixed countdown timer to every question. Set `timeLimit
 
 Omit `timeLimit` (or set it to `0`) to disable timing. When a selector is configured, it always includes "Off" and the configured default. Omit `timeLimitOptions` to keep the timer fixed and hide the selector.
 
+### Optional Problem Reporting
+
+Use `problemReporting` to add structured issue buttons to each problem. Selecting a category opens a prefilled GitHub Issue Form; GitHub authentication and abuse controls protect the repository from anonymous form spam. Add a matching Issue Form at `.github/ISSUE_TEMPLATE/problem-report.yml` in the configured repository.
+
+```js
+  problemReporting: {
+    repository: 'owner/repository',
+    issueTemplate: 'problem-report.yml',
+    categories: [
+      'Too easy',
+      'Distractors make the answer too obvious',
+      'Ambiguous or incorrect',
+      'Other',
+    ],
+  },
+```
+
+The quiz UI collects no free text. The resulting issue title and body contain only the problem ID and selected category.
+
 ### Customizing Weights
 
 You can optionally control the probability of each question type appearing in a session. Add `typeWeights` to `CONFIG`:
