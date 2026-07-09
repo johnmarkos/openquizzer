@@ -9,6 +9,12 @@ export const CONFIG = {
   // maxProblems: 10, // Optional: Limit "Practice All" sessions to this many problems
   // timeLimit: 60, // Optional: Default seconds per question (0 or omit = disabled)
   // timeLimitOptions: [45, 60, 90], // Optional: Let learners choose a timer (Off is included)
+  // Optional: Opens a prefilled GitHub Issue Form for structured problem reports.
+  // problemReporting: {
+  //   repository: 'owner/repository',
+  //   issueTemplate: 'problem-report.yml',
+  //   categories: ['Too easy', 'Distractors make the answer too obvious', 'Ambiguous or incorrect', 'Other'],
+  // },
   // Optional: weighted probability for question types (default: 1)
   // typeWeights: {
   //   "multiple-choice": 1,

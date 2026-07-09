@@ -1,5 +1,10 @@
 # Changelog
 
+## Structured Problem Reporting and Two-Stage Partial Credit
+
+- Added optional `CONFIG.problemReporting`, which opens a prefilled GitHub Issue Form with a problem ID and selected category only.
+- Two-stage questions now earn proportional credit for correctly answered stages; final feedback explicitly acknowledges partial credit.
+
 ## Configurable Timer
 
 - Added optional **`CONFIG.timeLimitOptions`** so instances can let learners choose an enabled timer duration or turn it off.
