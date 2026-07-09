@@ -2606,12 +2606,12 @@ describe("index.html UI wiring contracts", () => {
 
     it("uses the configured default and ignores an invalid stored preference", () => {
       const helpers = getTimerPreferenceHelpers(
-        { timeLimit: 60, timeLimitOptions: [45, 90] },
+        { timeLimit: 90, timeLimitOptions: [90, 45, 60] },
         "45 seconds",
       );
 
-      assert.deepEqual(helpers.getTimerLimitOptions(), [0, 60, 45, 90]);
-      assert.equal(helpers.getStoredTimerLimit(), 60);
+      assert.deepEqual(helpers.getTimerLimitOptions(), [0, 45, 60, 90]);
+      assert.equal(helpers.getStoredTimerLimit(), 90);
     });
 
     it("restores a valid stored preference", () => {

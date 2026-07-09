@@ -1420,7 +1420,7 @@
         );
         return [
           ...new Set([0, getConfiguredTimerLimit(), ...configuredOptions]),
-        ];
+        ].sort((firstLimit, secondLimit) => firstLimit - secondLimit);
       }
 
       function getTimerPreferenceKey() {
