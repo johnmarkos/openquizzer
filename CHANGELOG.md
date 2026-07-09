@@ -4,6 +4,7 @@
 
 - Added optional **`CONFIG.timeLimitOptions`** so instances can let learners choose an enabled timer duration or turn it off.
 - The selected limit persists in browser storage per instance; instances without `timeLimitOptions` retain their fixed timer behavior.
+- A selector always includes Off and the configured default; malformed stored preferences fall back to that default.
 
 ## Linter Portability Fix
 

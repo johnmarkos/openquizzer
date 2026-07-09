@@ -1406,12 +1406,21 @@
       // Timer preferences
       // =============================================
 
+      function getConfiguredTimerLimit() {
+        return Number.isInteger(CONFIG.timeLimit)
+          ? Math.max(CONFIG.timeLimit, 0)
+          : 0;
+      }
+
       function getTimerLimitOptions() {
         if (!Array.isArray(CONFIG.timeLimitOptions)) return [];
 
-        return [...new Set(CONFIG.timeLimitOptions)].filter(
+        const configuredOptions = [...new Set(CONFIG.timeLimitOptions)].filter(
           (option) => Number.isInteger(option) && option >= 0,
         );
+        return [
+          ...new Set([0, getConfiguredTimerLimit(), ...configuredOptions]),
+        ];
       }
 
       function getTimerPreferenceKey() {
@@ -1419,25 +1428,24 @@
       }
 
       function getStoredTimerLimit() {
-        const defaultLimit = Number.isInteger(CONFIG.timeLimit)
-          ? Math.max(CONFIG.timeLimit, 0)
-          : 0;
+        const defaultLimit = getConfiguredTimerLimit();
 
         if (timerLimitOptions.length === 0) return defaultLimit;
 
         try {
-          const storedLimit = Number.parseInt(
-            localStorage.getItem(getTimerPreferenceKey()),
-            10,
-          );
-          if (timerLimitOptions.includes(storedLimit)) return storedLimit;
+          const storedValue = localStorage.getItem(getTimerPreferenceKey());
+          const storedLimit = Number.parseInt(storedValue, 10);
+          if (
+            String(storedLimit) === storedValue &&
+            timerLimitOptions.includes(storedLimit)
+          ) {
+            return storedLimit;
+          }
         } catch {
           // Use the configured default when storage is unavailable.
         }
 
-        return timerLimitOptions.includes(defaultLimit)
-          ? defaultLimit
-          : timerLimitOptions[0];
+        return defaultLimit;
       }
 
       function renderTimerSettings() {

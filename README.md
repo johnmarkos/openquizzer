@@ -197,10 +197,10 @@ Set `timeLimit` to add a fixed countdown timer to every question. Set `timeLimit
 
 ```js
   timeLimit: 60,
-  timeLimitOptions: [0, 45, 60, 90], // 0 displays as "Off"
+  timeLimitOptions: [45, 60, 90], // "Off" is included automatically
 ```
 
-Omit `timeLimit` (or set it to `0`) to disable timing. Omit `timeLimitOptions` to keep the timer fixed and hide the selector.
+Omit `timeLimit` (or set it to `0`) to disable timing. When a selector is configured, it always includes "Off" and the configured default. Omit `timeLimitOptions` to keep the timer fixed and hide the selector.
 
 ### Customizing Weights
 

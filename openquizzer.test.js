@@ -2547,6 +2547,7 @@ describe("index.html UI wiring contracts", () => {
       // v2.9 — Timer
       "startTimer",
       "clearTimer",
+      "getConfiguredTimerLimit",
       "getTimerLimitOptions",
       "getStoredTimerLimit",
       "renderTimerSettings",
@@ -2572,6 +2573,55 @@ describe("index.html UI wiring contracts", () => {
         );
       });
     }
+  });
+
+  describe("timer preference configuration", () => {
+    function getTimerPreferenceHelpers(config, storedValue) {
+      const start = script.indexOf("function getConfiguredTimerLimit()");
+      const end = script.indexOf("function renderTimerSettings()");
+      assert.ok(start >= 0, "missing timer preference helper functions");
+      assert.ok(end > start, "missing end of timer preference helpers");
+
+      const helperSource = script.slice(start, end);
+      const localStorage = {
+        getItem: () => storedValue,
+      };
+      return new Function(
+        "CONFIG",
+        "localStorage",
+        "TIMER_PREFERENCE_SUFFIX",
+        `${helperSource}\nconst timerLimitOptions = getTimerLimitOptions();\nreturn { getConfiguredTimerLimit, getTimerLimitOptions, getStoredTimerLimit };`,
+      )(config, localStorage, "-timer-limit");
+    }
+
+    it("defaults to Off when a selector has no configured timeLimit", () => {
+      const helpers = getTimerPreferenceHelpers(
+        { timeLimitOptions: [45, 60] },
+        null,
+      );
+
+      assert.deepEqual(helpers.getTimerLimitOptions(), [0, 45, 60]);
+      assert.equal(helpers.getStoredTimerLimit(), 0);
+    });
+
+    it("uses the configured default and ignores an invalid stored preference", () => {
+      const helpers = getTimerPreferenceHelpers(
+        { timeLimit: 60, timeLimitOptions: [45, 90] },
+        "45 seconds",
+      );
+
+      assert.deepEqual(helpers.getTimerLimitOptions(), [0, 60, 45, 90]);
+      assert.equal(helpers.getStoredTimerLimit(), 60);
+    });
+
+    it("restores a valid stored preference", () => {
+      const helpers = getTimerPreferenceHelpers(
+        { timeLimit: 60, timeLimitOptions: [45, 90] },
+        "90",
+      );
+
+      assert.equal(helpers.getStoredTimerLimit(), 90);
+    });
   });
 
   // -----------------------------------------
