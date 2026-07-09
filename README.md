@@ -191,6 +191,17 @@ export const CONFIG = {
 
 Each chapter with `ready: true` needs a corresponding JSON file in `content/`. Chapters with `ready: false` appear grayed out. A "Practice All" button appears automatically when a unit has 2+ ready chapters.
 
+### Optional Timer
+
+Set `timeLimit` to add a fixed countdown timer to every question. Set `timeLimitOptions` to let learners choose from configured limits; their selection is saved in browser storage for future sessions.
+
+```js
+  timeLimit: 60,
+  timeLimitOptions: [0, 45, 60, 90], // 0 displays as "Off"
+```
+
+Omit `timeLimit` (or set it to `0`) to disable timing. Omit `timeLimitOptions` to keep the timer fixed and hide the selector.
+
 ### Customizing Weights
 
 You can optionally control the probability of each question type appearing in a session. Add `typeWeights` to `CONFIG`:

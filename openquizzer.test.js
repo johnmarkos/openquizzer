@@ -2547,6 +2547,10 @@ describe("index.html UI wiring contracts", () => {
       // v2.9 — Timer
       "startTimer",
       "clearTimer",
+      "getTimerLimitOptions",
+      "getStoredTimerLimit",
+      "renderTimerSettings",
+      "setTimerLimit",
       // v2.9 — Resume
       "loadInProgressSnapshot",
       "clearInProgressSnapshot",
@@ -2732,6 +2736,8 @@ describe("index.html UI wiring contracts", () => {
       // v2.9 — Timer
       "timer-display",
       "timed-out-label",
+      "timer-settings",
+      "timer-options",
       // v2.9 — Resume
       "resume-prompt",
       "resume-yes-btn",
