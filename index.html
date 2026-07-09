@@ -918,6 +918,38 @@
         color: var(--error);
       }
 
+      /* Timer preference */
+      .timer-settings {
+        margin: 1rem 0;
+        padding: 0.875rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+
+      .timer-settings-label {
+        display: block;
+        margin-bottom: 0.625rem;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+      }
+
+      .timer-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .timer-option {
+        min-width: 3.75rem;
+      }
+
+      .timer-option[aria-pressed="true"] {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--bg);
+      }
+
       /* Resume prompt */
       .resume-prompt {
         margin-bottom: 1.25rem;
@@ -951,6 +983,15 @@
 
         <div id="error-msg" class="error-msg"></div>
 
+        <div id="timer-settings" class="timer-settings hidden-container">
+          <span class="timer-settings-label">Time per question</span>
+          <div
+            id="timer-options"
+            class="timer-options"
+            role="group"
+            aria-label="Time per question"
+          ></div>
+        </div>
         <div id="unit-list"></div>
         <div id="resume-prompt" class="resume-prompt hidden-container">
           <p id="resume-prompt-text">Resume your previous session?</p>
@@ -1201,7 +1242,9 @@
       // =============================================
 
       const TWO_STAGE_TRANSITION_DELAY = 800; // ms pause between two-stage parts
-      const TIME_LIMIT = CONFIG.timeLimit || 0; // seconds per question (0 = disabled)
+      const TIMER_PREFERENCE_SUFFIX = "-timer-limit";
+      const timerLimitOptions = getTimerLimitOptions();
+      let timeLimit = getStoredTimerLimit();
 
       // Top-level views
       const landing = document.getElementById("landing");
@@ -1319,6 +1362,8 @@
       // Timer elements
       const timerDisplay = document.getElementById("timer-display");
       const timedOutLabel = document.getElementById("timed-out-label");
+      const timerSettings = document.getElementById("timer-settings");
+      const timerOptions = document.getElementById("timer-options");
 
       // Resume elements
       const resumePrompt = document.getElementById("resume-prompt");
@@ -1358,13 +1403,86 @@
       }
 
       // =============================================
+      // Timer preferences
+      // =============================================
+
+      function getConfiguredTimerLimit() {
+        return Number.isInteger(CONFIG.timeLimit)
+          ? Math.max(CONFIG.timeLimit, 0)
+          : 0;
+      }
+
+      function getTimerLimitOptions() {
+        if (!Array.isArray(CONFIG.timeLimitOptions)) return [];
+
+        const configuredOptions = [...new Set(CONFIG.timeLimitOptions)].filter(
+          (option) => Number.isInteger(option) && option >= 0,
+        );
+        return [
+          ...new Set([0, getConfiguredTimerLimit(), ...configuredOptions]),
+        ];
+      }
+
+      function getTimerPreferenceKey() {
+        return `${CONFIG.storageKey || "openquizzer-sessions"}${TIMER_PREFERENCE_SUFFIX}`;
+      }
+
+      function getStoredTimerLimit() {
+        const defaultLimit = getConfiguredTimerLimit();
+
+        if (timerLimitOptions.length === 0) return defaultLimit;
+
+        try {
+          const storedValue = localStorage.getItem(getTimerPreferenceKey());
+          const storedLimit = Number.parseInt(storedValue, 10);
+          if (
+            String(storedLimit) === storedValue &&
+            timerLimitOptions.includes(storedLimit)
+          ) {
+            return storedLimit;
+          }
+        } catch {
+          // Use the configured default when storage is unavailable.
+        }
+
+        return defaultLimit;
+      }
+
+      function renderTimerSettings() {
+        if (timerLimitOptions.length === 0) return;
+
+        timerSettings.classList.remove("hidden-container");
+        timerOptions.innerHTML = "";
+
+        timerLimitOptions.forEach((option) => {
+          const button = document.createElement("button");
+          button.className = "nav-btn secondary timer-option";
+          button.type = "button";
+          button.textContent = option === 0 ? "Off" : `${option}s`;
+          button.setAttribute("aria-pressed", String(option === timeLimit));
+          button.addEventListener("click", () => setTimerLimit(option));
+          timerOptions.appendChild(button);
+        });
+      }
+
+      function setTimerLimit(limit) {
+        timeLimit = limit;
+        try {
+          localStorage.setItem(getTimerPreferenceKey(), String(limit));
+        } catch {
+          // The selection still applies for the current page session.
+        }
+        renderTimerSettings();
+      }
+
+      // =============================================
       // Timer functions
       // =============================================
 
       function startTimer() {
         clearTimer();
-        if (TIME_LIMIT <= 0) return;
-        timerSecondsLeft = TIME_LIMIT;
+        if (timeLimit <= 0) return;
+        timerSecondsLeft = timeLimit;
         timerDisplay.classList.remove("hidden-container", "timer-warning");
         timerDisplay.textContent = formatTimerDisplay(timerSecondsLeft);
 
@@ -1373,7 +1491,7 @@
           timerDisplay.textContent = formatTimerDisplay(timerSecondsLeft);
 
           // Warning at 25% time remaining
-          if (timerSecondsLeft <= Math.ceil(TIME_LIMIT * 0.25)) {
+          if (timerSecondsLeft <= Math.ceil(timeLimit * 0.25)) {
             timerDisplay.classList.add("timer-warning");
           }
 
@@ -2959,6 +3077,7 @@
       }
 
       renderUnitList();
+      renderTimerSettings();
       sessionHistory = loadFromLocalStorage();
       problemTracking = loadProblemTracking();
       allProblemsById = loadProblemMetadata();
